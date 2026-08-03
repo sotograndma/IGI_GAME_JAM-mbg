@@ -39,8 +39,11 @@ public static class PlaceholderSceneBuilder
     // the vending machines) to roughly the player's 1.1 units. Keep it a whole
     // number so the pixel art stays crisp.
     const float BgScale = 2f;
-    // Row (counted from the bottom of the texture) where the wooden floor starts.
-    const float FloorPixelsFromBottom = 11f;
+    // Row (counted from the bottom of the texture) the player's feet rest on.
+    // 0 = the very bottom edge of the artwork, which is what the scene was hand-tuned
+    // to. For reference, a pixel scan puts the top of the drawn wooden floor band at
+    // row 11 — switch to that if the character should stand behind the band instead.
+    const float FloorPixelsFromBottom = 0f;
 
     const float InteriorOffsetX = 1000f;
 
@@ -70,7 +73,61 @@ public static class PlaceholderSceneBuilder
         public float orthoSize;
     }
 
-    [MenuItem("Tools/Placeholder/Build Scene")]
+    /// <summary>
+    /// Guarded entry point. The build itself wipes the whole placeholder hierarchy,
+    /// which also throws away any hand-tuning done in the Inspector, so it asks
+    /// first and leaves a copy of the scene file behind.
+    /// </summary>
+    [MenuItem("Tools/Placeholder/Rebuild Scene (DESTRUCTIVE)")]
+    public static void RebuildSceneGuarded()
+    {
+        if (GameObject.Find(RootName) != null)
+        {
+            Scene open = SceneManager.GetActiveScene();
+            string dirtyWarning = open.isDirty
+                ? "\n\nWARNING: this scene has UNSAVED changes. They will not be in the " +
+                  "backup. Cancel and press Ctrl+S first if you want them kept."
+                : "";
+
+            bool ok = EditorUtility.DisplayDialog(
+                "Rebuild placeholder scene?",
+                $"This deletes the entire '{RootName}' hierarchy and regenerates it from code.\n\n" +
+                "Everything hand-adjusted inside it is LOST, including floor height, wall " +
+                "positions, door position/scale, spawn points, and anything you added " +
+                "under that root yourself.\n\n" +
+                "A copy of the scene file on disk will be written to SceneBackups/ first.\n\n" +
+                "To only re-fit the interior colliders while keeping every manual change, " +
+                "cancel and use Tools > Placeholder > Fit Interior To Background instead." +
+                dirtyWarning,
+                "Rebuild (destroy)", "Cancel");
+
+            if (!ok) return;
+            BackupSceneFile();
+        }
+
+        BuildScene();
+    }
+
+    /// <summary>Copies the active scene file to SceneBackups/ outside Assets/.</summary>
+    static void BackupSceneFile()
+    {
+        Scene scene = SceneManager.GetActiveScene();
+        if (string.IsNullOrEmpty(scene.path)) return;
+
+        string projectRoot = Directory.GetParent(Application.dataPath).FullName;
+        string source = Path.Combine(projectRoot, scene.path);
+        if (!File.Exists(source)) return;
+
+        // Kept outside Assets/ so Unity does not import the backups as extra scenes.
+        string dir = Path.Combine(projectRoot, "SceneBackups");
+        Directory.CreateDirectory(dir);
+
+        string dest = Path.Combine(dir,
+            $"{Path.GetFileNameWithoutExtension(scene.path)}-{System.DateTime.Now:yyyyMMdd-HHmmss}.unity");
+        File.Copy(source, dest, true);
+        Debug.Log($"[PlaceholderSceneBuilder] Scene backed up to {dest}");
+    }
+
     public static void BuildScene()
     {
         _square = GetOrCreateSquareSprite();
@@ -189,38 +246,52 @@ public static class PlaceholderSceneBuilder
 
         Vector2 roomSize;
         float texHeightPx;
+        GameObject bgGo;
         if (bg != null)
         {
             roomSize = (Vector2)bg.bounds.size * BgScale;
             texHeightPx = bg.rect.height;
-            PlaceSpriteAsset("Background", parent, bg, new Vector2(ox, 0f), BgScale, -100);
+            bgGo = PlaceSpriteAsset("Background", parent, bg, new Vector2(ox, 0f), BgScale, -100);
         }
         else
         {
             // Degrade to a plain box of the same size rather than leaving a
-            // half-built scene behind.
+            // half-built scene behind. Same name, so the fit tool still finds it.
             roomSize = new Vector2(12.5f, 5.625f);
             texHeightPx = 180f;
-            Sprite("Background_Fallback", parent, new Vector2(ox, 0f), roomSize, ColHouse, -100);
+            bgGo = Sprite("Background", parent, new Vector2(ox, 0f), roomSize, ColHouse, -100);
         }
 
         float halfW = roomSize.x * 0.5f;
         float halfH = roomSize.y * 0.5f;
 
-        // Where the artwork's wooden floor starts, converted from pixels to units.
+        // Where the player's feet rest, converted from texture pixels to units.
         float floorTop = -halfH + (FloorPixelsFromBottom / texHeightPx) * roomSize.y;
 
         // Invisible collision shell — the artwork already draws floor and walls.
-        // The floor is deliberately thick so a fast fall can never tunnel through,
-        // and the walls sit just outside the room so the playable area matches the
-        // visible edges exactly.
+        // Created here but positioned by ApplyRoomLayout, so a full rebuild and a
+        // non-destructive fit run through exactly the same layout code.
         const float floorThickness = 1f;
-        const float t = 0.5f;
-        SolidBox("Floor", parent, new Vector2(ox, floorTop - floorThickness * 0.5f),
-                 new Vector2(roomSize.x, floorThickness));
-        SolidBox("Wall_Left", parent, new Vector2(ox - halfW - t * 0.5f, 0f), new Vector2(t, roomSize.y));
-        SolidBox("Wall_Right", parent, new Vector2(ox + halfW + t * 0.5f, 0f), new Vector2(t, roomSize.y));
-        SolidBox("Ceiling", parent, new Vector2(ox, halfH + t * 0.5f), new Vector2(roomSize.x, t));
+        const float wallThickness = 0.5f;
+        var floorGo = SolidBox("Floor", parent, Vector2.zero, Vector2.one);
+        var wallLeftGo = SolidBox("Wall_Left", parent, Vector2.zero, Vector2.one);
+        var wallRightGo = SolidBox("Wall_Right", parent, Vector2.zero, Vector2.one);
+        var ceilingGo = SolidBox("Ceiling", parent, Vector2.zero, Vector2.one);
+
+        var fitter = parent.gameObject.AddComponent<InteriorRoomFitter>();
+        var fso = new SerializedObject(fitter);
+        fso.FindProperty("background").objectReferenceValue = bgGo.GetComponent<SpriteRenderer>();
+        fso.FindProperty("floor").objectReferenceValue = floorGo.GetComponent<BoxCollider2D>();
+        fso.FindProperty("wallLeft").objectReferenceValue = wallLeftGo.GetComponent<BoxCollider2D>();
+        fso.FindProperty("wallRight").objectReferenceValue = wallRightGo.GetComponent<BoxCollider2D>();
+        fso.FindProperty("ceiling").objectReferenceValue = ceilingGo.GetComponent<BoxCollider2D>();
+        fso.FindProperty("floorSurfaceY").floatValue = floorTop;
+        fso.FindProperty("floorThickness").floatValue = floorThickness;
+        fso.FindProperty("wallThickness").floatValue = wallThickness;
+        fso.FindProperty("contactCompensation").floatValue = Physics2D.defaultContactOffset;
+        fso.ApplyModifiedPropertiesWithoutUndo();
+
+        ApplyRoomLayout(fitter, recordUndo: false);
 
         // Door: centred in the room, standing on the floor.
         const float doorW = 0.9f, doorH = 1.7f;
@@ -262,6 +333,252 @@ public static class PlaceholderSceneBuilder
                        "Using a plain blue box instead. Check that the file exists and that its " +
                        "Texture Type is 'Sprite (2D and UI)'.");
         return null;
+    }
+
+    // ======================================================= non-destructive fit
+
+    /// <summary>
+    /// Re-fits only the interior's collision shell (floor, side walls, ceiling) to
+    /// the background artwork. Everything else in the scene — player, door, spawns,
+    /// anything hand-added — is left untouched, which makes this safe to run on a
+    /// scene that has been tuned by hand.
+    /// </summary>
+    [MenuItem("Tools/Placeholder/Fit Interior To Background")]
+    public static void FitInteriorToBackground()
+    {
+        if (Application.isPlaying)
+        {
+            Debug.LogError("[PlaceholderSceneBuilder] Exit Play mode first — scene changes made " +
+                           "while playing are discarded when you stop. Nothing was changed.");
+            return;
+        }
+
+        Transform interiorRoot = FindInteriorRoot();
+        if (interiorRoot == null) return;
+
+        var fitter = interiorRoot.GetComponent<InteriorRoomFitter>();
+        bool fresh = fitter == null;
+        if (fresh) fitter = Undo.AddComponent<InteriorRoomFitter>(interiorRoot.gameObject);
+
+        WireFitter(fitter, interiorRoot, seedFromScene: fresh);
+        if (!ApplyRoomLayout(fitter, recordUndo: true)) return;
+
+        EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+        Selection.activeGameObject = fitter.gameObject;
+
+        float c = fitter.ContactCompensation;
+        Debug.Log($"[PlaceholderSceneBuilder] Interior shell re-fitted. Floor surface " +
+                  $"{fitter.FloorSurfaceY}, contact compensation {c}. Player sprite should now " +
+                  $"rest flush against the artwork. Tune 'floorSurfaceY' on the InteriorRoomFitter " +
+                  $"and run this again if the feet are still off. Save with Ctrl+S.");
+    }
+
+    static Transform FindInteriorRoot()
+    {
+        var root = GameObject.Find(RootName);
+        Transform interiorRoot = root != null ? root.transform.Find("InteriorRoot") : null;
+        if (interiorRoot == null)
+        {
+            Debug.LogError($"[PlaceholderSceneBuilder] Could not find '{RootName}/InteriorRoot' in " +
+                           "the open scene. Nothing was changed.");
+        }
+        return interiorRoot;
+    }
+
+    /// <summary>
+    /// Fills in any unassigned references by child name. When the component has just
+    /// been added, it also adopts the floor's current height so hand-tuning already
+    /// done in the Inspector becomes the value the layout rebuilds from, rather than
+    /// being silently overwritten on the very first run.
+    /// </summary>
+    static void WireFitter(InteriorRoomFitter fitter, Transform interiorRoot, bool seedFromScene)
+    {
+        var so = new SerializedObject(fitter);
+
+        if (fitter.Background == null)
+        {
+            Transform t = interiorRoot.Find("Background");
+            so.FindProperty("background").objectReferenceValue =
+                t != null ? t.GetComponent<SpriteRenderer>() : null;
+        }
+        BindCollider(so, "floor", fitter.Floor, interiorRoot, "Floor");
+        BindCollider(so, "wallLeft", fitter.WallLeft, interiorRoot, "Wall_Left");
+        BindCollider(so, "wallRight", fitter.WallRight, interiorRoot, "Wall_Right");
+        BindCollider(so, "ceiling", fitter.Ceiling, interiorRoot, "Ceiling");
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        if (!seedFromScene || fitter.Floor == null) return;
+
+        Transform ft = fitter.Floor.transform;
+        float worldThickness = fitter.Floor.size.y * Mathf.Abs(ft.lossyScale.y);
+        so.Update();
+        so.FindProperty("floorSurfaceY").floatValue = ft.position.y + worldThickness * 0.5f;
+        so.FindProperty("floorThickness").floatValue = worldThickness;
+        so.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    static void BindCollider(SerializedObject so, string field, BoxCollider2D current,
+                             Transform parent, string childName)
+    {
+        if (current != null) return;
+        Transform t = parent.Find(childName);
+        so.FindProperty(field).objectReferenceValue = t != null ? t.GetComponent<BoxCollider2D>() : null;
+    }
+
+    /// <summary>
+    /// The single source of truth for the interior's collision shell, shared by the
+    /// full rebuild and the non-destructive fit so the two can never disagree.
+    /// </summary>
+    static bool ApplyRoomLayout(InteriorRoomFitter fitter, bool recordUndo)
+    {
+        if (fitter.Background == null)
+        {
+            Debug.LogError("[PlaceholderSceneBuilder] InteriorRoomFitter has no Background " +
+                           "SpriteRenderer assigned and none named 'Background' was found. " +
+                           "Nothing was changed.");
+            return false;
+        }
+
+        Bounds bg = fitter.Background.bounds;
+        float c = fitter.ContactCompensation;
+        float wt = fitter.WallThickness;
+        float ft = fitter.FloorThickness;
+
+        // Each surface is pushed outward by the contact offset, because Box2D parks a
+        // resting body that far from what it is touching. Compensating here means the
+        // player's *sprite* ends up flush with the artwork.
+        float leftInner = bg.min.x - c;
+        float rightInner = bg.max.x + c;
+        float ceilInner = bg.max.y + c;
+        float floorTop = fitter.FloorSurfaceY - c;
+
+        bool ok = true;
+        ok &= SetBox(fitter.Floor, "Floor",
+                     new Vector2(bg.center.x, floorTop - ft * 0.5f), new Vector2(bg.size.x, ft), recordUndo);
+        ok &= SetBox(fitter.WallLeft, "Wall_Left",
+                     new Vector2(leftInner - wt * 0.5f, bg.center.y), new Vector2(wt, bg.size.y), recordUndo);
+        ok &= SetBox(fitter.WallRight, "Wall_Right",
+                     new Vector2(rightInner + wt * 0.5f, bg.center.y), new Vector2(wt, bg.size.y), recordUndo);
+        ok &= SetBox(fitter.Ceiling, "Ceiling",
+                     new Vector2(bg.center.x, ceilInner + wt * 0.5f), new Vector2(bg.size.x, wt), recordUndo);
+        return ok;
+    }
+
+    /// <summary>Places a box collider by world position and world size.</summary>
+    static bool SetBox(BoxCollider2D box, string label, Vector2 worldPos, Vector2 worldSize, bool recordUndo)
+    {
+        if (box == null)
+        {
+            Debug.LogError($"[PlaceholderSceneBuilder] Interior collider '{label}' is missing. " +
+                           "Assign it on the InteriorRoomFitter, or run the destructive rebuild.");
+            return false;
+        }
+
+        Transform t = box.transform;
+        if (recordUndo)
+        {
+            Undo.RecordObject(t, "Fit Interior To Background");
+            Undo.RecordObject(box, "Fit Interior To Background");
+        }
+
+        t.position = worldPos;
+
+        // m_Size is in local space, so undo the transform's scale to land on the
+        // requested world size even if the object was scaled by hand.
+        Vector3 s = t.lossyScale;
+        float sx = Mathf.Approximately(s.x, 0f) ? 1f : Mathf.Abs(s.x);
+        float sy = Mathf.Approximately(s.y, 0f) ? 1f : Mathf.Abs(s.y);
+        box.size = new Vector2(worldSize.x / sx, worldSize.y / sy);
+        return true;
+    }
+
+    // ============================================================== diagnostics
+
+    /// <summary>
+    /// Prints the interior's real measurements. Run this while in Play mode with the
+    /// player pressed against a wall: it reports the actual gap between the player's
+    /// collider and each surface, in world units and in on-screen pixels, so the
+    /// cause of any visible gap can be read off instead of guessed at.
+    /// </summary>
+    [MenuItem("Tools/Placeholder/Log Interior Diagnostics")]
+    public static void LogInteriorDiagnostics()
+    {
+        Transform interiorRoot = FindInteriorRoot();
+        if (interiorRoot == null) return;
+
+        var playerGo = GameObject.FindGameObjectWithTag("Player");
+        var playerCol = playerGo != null ? playerGo.GetComponent<Collider2D>() : null;
+        var cam = Camera.main;
+
+        if (playerCol == null || cam == null)
+        {
+            Debug.LogError("[Diagnostics] Need a 'Player' tagged object with a Collider2D and a " +
+                           "MainCamera in the scene.");
+            return;
+        }
+
+        SpriteRenderer bgSr = null;
+        Transform bgT = interiorRoot.Find("Background");
+        if (bgT != null) bgSr = bgT.GetComponent<SpriteRenderer>();
+
+        BoxCollider2D left = FindBox(interiorRoot, "Wall_Left");
+        BoxCollider2D right = FindBox(interiorRoot, "Wall_Right");
+        BoxCollider2D floor = FindBox(interiorRoot, "Floor");
+
+        // Pixels per world unit, taken from the camera's own render target rather than
+        // the editor window, so it is correct regardless of which view has focus.
+        float pxPerUnit = cam.orthographic && cam.orthographicSize > 0f
+            ? cam.pixelHeight / (2f * cam.orthographicSize)
+            : 0f;
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("===== INTERIOR DIAGNOSTICS =====");
+        sb.AppendLine($"Play mode          : {Application.isPlaying}");
+        sb.AppendLine($"Camera             : pos {cam.transform.position}  ortho {cam.orthographicSize}  " +
+                      $"aspect {cam.aspect:F4}  viewport {cam.pixelWidth}x{cam.pixelHeight} px");
+        sb.AppendLine($"Scale              : {pxPerUnit:F2} screen px per world unit " +
+                      $"(1 px = {(pxPerUnit > 0f ? 1f / pxPerUnit : 0f):F5} units)");
+        sb.AppendLine($"Physics2D contact  : {Physics2D.defaultContactOffset}");
+
+        Bounds pb = playerCol.bounds;
+        sb.AppendLine($"Player collider    : x {pb.min.x:F4} .. {pb.max.x:F4}   y {pb.min.y:F4} .. {pb.max.y:F4}");
+
+        if (bgSr != null)
+        {
+            Bounds bb = bgSr.bounds;
+            sb.AppendLine($"Background artwork : x {bb.min.x:F4} .. {bb.max.x:F4}   y {bb.min.y:F4} .. {bb.max.y:F4}");
+            Report(sb, "Player -> art LEFT  ", pb.min.x - bb.min.x, pxPerUnit);
+            Report(sb, "Player -> art RIGHT ", bb.max.x - pb.max.x, pxPerUnit);
+            Report(sb, "Player -> art BOTTOM", pb.min.y - bb.min.y, pxPerUnit);
+        }
+
+        if (left != null) Report(sb, "Player -> Wall_Left ", pb.min.x - left.bounds.max.x, pxPerUnit);
+        if (right != null) Report(sb, "Player -> Wall_Right", right.bounds.min.x - pb.max.x, pxPerUnit);
+        if (floor != null) Report(sb, "Player -> Floor top ", pb.min.y - floor.bounds.max.y, pxPerUnit);
+
+        var follow = cam.GetComponent<CameraFollow2D>();
+        if (follow != null && bgSr != null)
+        {
+            float halfW = cam.orthographicSize * cam.aspect;
+            Bounds bb = bgSr.bounds;
+            bool clampsX = (bb.max.x - bb.min.x) > 2f * halfW;
+            sb.AppendLine($"Camera X clamp     : {(clampsX ? $"[{bb.min.x + halfW:F4} .. {bb.max.x - halfW:F4}]" : "DISABLED - view is wider than the room, camera centres X")}");
+            sb.AppendLine($"Camera view spans  : x {cam.transform.position.x - halfW:F4} .. {cam.transform.position.x + halfW:F4}");
+        }
+
+        sb.Append("================================");
+        Debug.Log(sb.ToString());
+    }
+
+    static void Report(System.Text.StringBuilder sb, string label, float gapUnits, float pxPerUnit)
+    {
+        sb.AppendLine($"{label}: {gapUnits,9:F4} units = {gapUnits * pxPerUnit,8:F2} px");
+    }
+
+    static BoxCollider2D FindBox(Transform parent, string childName)
+    {
+        Transform t = parent.Find(childName);
+        return t != null ? t.GetComponent<BoxCollider2D>() : null;
     }
 
     // ============================================================== helpers
