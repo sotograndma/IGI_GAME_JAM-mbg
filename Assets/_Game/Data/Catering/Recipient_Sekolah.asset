@@ -15,3 +15,19 @@ MonoBehaviour:
   institutionName: SD Negeri 03 Sukamaju
   icon: {fileID: 0}
   patienceMultiplier: 1
+  reactionPerfect:
+  - Anak-anak makan sampai habis!
+  - Wah, ini rasanya seperti masakan rumah!
+  - Bu Guru sampai minta tambah, lho.
+  reactionGood:
+  - Terima kasih, anak-anak makan dengan tenang.
+  - Lumayan, semua kebagian.
+  - Cukup enak kok, terima kasih ya.
+  reactionBad:
+  - Ini... nasinya kurang ya?
+  - Anak-anak banyak yang sisa, Bu.
+  - Lain kali tolong lebih diperhatikan.
+  reactionFailed:
+  - Kami sudah menunggu terlalu lama...
+  - Anak-anak keburu pulang, Bu.
+  - Maaf, kami terpaksa cari katering lain.

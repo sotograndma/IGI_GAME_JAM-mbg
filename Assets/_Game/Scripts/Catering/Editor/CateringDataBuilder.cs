@@ -59,6 +59,7 @@ namespace MBG.Catering
             EnsureFolder(CateringFolder);
 
             CateringBalanceSO balance = EnsureBalance(log, ref changed);
+            ScoringConfigSO scoring = EnsureScoring(log, ref changed);
 
             RecipeStepSO stepPrep = EnsureStep("Step_Prep_PotongSayur", StationType.Prep, easy,
                                                "Potong sayur", log, ref changed);
@@ -79,7 +80,9 @@ namespace MBG.Catering
 
             AssetDatabase.SaveAssets();
 
-            changed |= EnsureController(scene, balance, orders, log);
+            changed |= EnsureController(scene, balance, scoring, orders, log);
+            changed |= EnsureEconomy(scene, scoring, log);
+            changed |= BindResultPanel(scoring, log);
 
             if (changed)
             {
@@ -157,17 +160,94 @@ namespace MBG.Catering
             return recipe;
         }
 
+        static ScoringConfigSO EnsureScoring(List<string> log, ref bool changed)
+        {
+            var scoring = LoadOrCreate<ScoringConfigSO>("ScoringConfig", out bool created);
+            if (!created) return scoring;
+
+            scoring.perfectMultiplier = 1.5f;
+            scoring.goodMultiplier = 1f;
+            scoring.badMultiplier = 0.6f;
+            scoring.failedMultiplier = 0.2f;
+            scoring.maxTimeBonus = 200;
+            scoring.perfectBonus = 50;
+            scoring.failPenaltyGold = 150;
+            scoring.startingGold = 500;
+            EditorUtility.SetDirty(scoring);
+
+            changed = true;
+            log.Add("ScoringConfig.asset dibuat (Perfect 1.5, Good 1.0, Bad 0.6, Failed 0.2, " +
+                    "bonus waktu maks 200, bonus perfect 50, denda gagal 150).");
+            return scoring;
+        }
+
         static RecipientSO EnsureRecipient(List<string> log, ref bool changed)
         {
             var recipient = LoadOrCreate<RecipientSO>("Recipient_Sekolah", out bool created);
-            if (!created) return recipient;
 
-            recipient.institutionName = "SD Negeri 03 Sukamaju";
-            recipient.patienceMultiplier = 1f;
+            if (created)
+            {
+                recipient.institutionName = "SD Negeri 03 Sukamaju";
+                recipient.patienceMultiplier = 1f;
+                changed = true;
+                log.Add("Recipient_Sekolah dibuat (SD Negeri 03 Sukamaju).");
+            }
+
+            // Kalimat reaksi diisi hanya kalau masih kosong, supaya teks yang sudah
+            // ditulis tangan tidak tertimpa.
+            bool filledLines = false;
+
+            if (recipient.reactionPerfect.Count == 0)
+            {
+                recipient.reactionPerfect = new List<string>
+                {
+                    "Anak-anak makan sampai habis!",
+                    "Wah, ini rasanya seperti masakan rumah!",
+                    "Bu Guru sampai minta tambah, lho."
+                };
+                filledLines = true;
+            }
+
+            if (recipient.reactionGood.Count == 0)
+            {
+                recipient.reactionGood = new List<string>
+                {
+                    "Terima kasih, anak-anak makan dengan tenang.",
+                    "Lumayan, semua kebagian.",
+                    "Cukup enak kok, terima kasih ya."
+                };
+                filledLines = true;
+            }
+
+            if (recipient.reactionBad.Count == 0)
+            {
+                recipient.reactionBad = new List<string>
+                {
+                    "Ini... nasinya kurang ya?",
+                    "Anak-anak banyak yang sisa, Bu.",
+                    "Lain kali tolong lebih diperhatikan."
+                };
+                filledLines = true;
+            }
+
+            if (recipient.reactionFailed.Count == 0)
+            {
+                recipient.reactionFailed = new List<string>
+                {
+                    "Kami sudah menunggu terlalu lama...",
+                    "Anak-anak keburu pulang, Bu.",
+                    "Maaf, kami terpaksa cari katering lain."
+                };
+                filledLines = true;
+            }
+
+            if (filledLines)
+            {
+                changed = true;
+                log.Add("Kalimat reaksi Recipient_Sekolah diisi (perfect/baik/buruk/gagal).");
+            }
+
             EditorUtility.SetDirty(recipient);
-
-            changed = true;
-            log.Add("Recipient_Sekolah dibuat (SD Negeri 03 Sukamaju).");
             return recipient;
         }
 
@@ -211,8 +291,8 @@ namespace MBG.Catering
 
         // ---- Scene ---------------------------------------------------------
 
-        static bool EnsureController(Scene scene, CateringBalanceSO balance, List<OrderSO> orders,
-                                     List<string> log)
+        static bool EnsureController(Scene scene, CateringBalanceSO balance, ScoringConfigSO scoring,
+                                     List<OrderSO> orders, List<string> log)
         {
             GameObject systems = FindRoot(scene, SystemsName);
             if (systems == null)
@@ -241,7 +321,15 @@ namespace MBG.Catering
                 log.Add("CateringController.balance diikat ke CateringBalance.asset.");
             }
 
-            SerializedProperty ordersProp = so.FindProperty("sampleOrders");
+            SerializedProperty scoringProp = so.FindProperty("scoring");
+            if (scoringProp != null && scoringProp.objectReferenceValue != scoring)
+            {
+                scoringProp.objectReferenceValue = scoring;
+                changed = true;
+                log.Add("CateringController.scoring diikat ke ScoringConfig.asset.");
+            }
+
+            SerializedProperty ordersProp = so.FindProperty("dayOrders");
             if (ordersProp != null && ordersProp.arraySize == 0)
             {
                 ordersProp.arraySize = orders.Count;
@@ -249,12 +337,59 @@ namespace MBG.Catering
                     ordersProp.GetArrayElementAtIndex(i).objectReferenceValue = orders[i];
 
                 changed = true;
-                log.Add($"CateringController.sampleOrders diisi {orders.Count} pesanan " +
-                        "(F3 memakai yang pertama: Order_Sekolah_Kecil).");
+                log.Add($"CateringController.dayOrders diisi {orders.Count} pesanan " +
+                        "(antrian satu hari, dikerjakan berurutan).");
             }
 
             so.ApplyModifiedProperties();
             return changed;
+        }
+
+        static bool EnsureEconomy(Scene scene, ScoringConfigSO scoring, List<string> log)
+        {
+            GameObject systems = FindRoot(scene, SystemsName);
+            if (systems == null) return false;
+
+            bool changed = false;
+
+            var economy = systems.GetComponent<MBG.Core.EconomyService>();
+            if (economy == null)
+            {
+                economy = Undo.AddComponent<MBG.Core.EconomyService>(systems);
+                changed = true;
+                log.Add($"EconomyService ditambahkan ke '{SystemsName}'.");
+            }
+
+            var so = new SerializedObject(economy);
+            SerializedProperty prop = so.FindProperty("scoring");
+            if (prop != null && prop.objectReferenceValue != scoring)
+            {
+                prop.objectReferenceValue = scoring;
+                so.ApplyModifiedProperties();
+                changed = true;
+                log.Add($"EconomyService.scoring diikat (gold awal {scoring.startingGold}).");
+            }
+
+            return changed;
+        }
+
+        /// <summary>
+        /// ResultPanel butuh rumus yang sama untuk menampilkan denda kegagalan.
+        /// Diikat di sini supaya urutan menjalankan tool tidak jadi masalah.
+        /// </summary>
+        static bool BindResultPanel(ScoringConfigSO scoring, List<string> log)
+        {
+            var panel = Object.FindAnyObjectByType<MBG.UI.ResultPanel>(FindObjectsInactive.Include);
+            if (panel == null) return false;
+
+            var so = new SerializedObject(panel);
+            SerializedProperty prop = so.FindProperty("scoring");
+            if (prop == null || prop.objectReferenceValue == scoring) return false;
+
+            prop.objectReferenceValue = scoring;
+            so.ApplyModifiedProperties();
+            log.Add("ResultPanel.scoring diikat ke ScoringConfig.asset.");
+            return true;
         }
 
         static GameObject FindRoot(Scene scene, string name)

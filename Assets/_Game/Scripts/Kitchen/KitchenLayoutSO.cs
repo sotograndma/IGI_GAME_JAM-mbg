@@ -34,6 +34,10 @@ namespace MBG.Kitchen
             [Tooltip("Kosongkan untuk memakai nama bawaan tipe station.")]
             public string labelOverride = "";
 
+            [Tooltip("Prompt saat station belum boleh dipakai. Kosongkan untuk memakai bawaan tipe " +
+                     "station (Handover: \"Catering belum siap\").")]
+            public string irrelevantPromptOverride = "";
+
             public StationEntry() { }
 
             public StationEntry(StationType type, float offsetX, Color color)
@@ -89,12 +93,45 @@ namespace MBG.Kitchen
         [Tooltip("Tinggi label di atas sisi atas station.")]
         public float labelOffsetY = 0.35f;
 
+        [Header("NPC penerima (di seberang counter Handover)")]
+        [Tooltip("Jarak dari pusat station Handover. Positif = ke kanan.")]
+        public float recipientOffsetX = 1.0f;
+
+        public float recipientWidth = 0.8f;
+        public float recipientHeight = 1.5f;
+        public Color recipientColor = new Color(0.72f, 0.62f, 0.86f);
+
+        [Tooltip("Tinggi label nama di atas kepala NPC.")]
+        public float recipientLabelOffsetY = 0.3f;
+
+        public float recipientLabelFontSize = 0.85f;
+
         [Header("Station (urut kiri ke kanan)")]
         public List<StationEntry> stations = new();
 
         /// <summary>Posisi pusat station di world space.</summary>
         public Vector2 GetStationCenter(StationEntry entry)
             => new Vector2(roomCenterX + entry.offsetX, floorSurfaceY + entry.height * 0.5f);
+
+        public StationEntry FindEntry(StationType type)
+        {
+            for (int i = 0; i < stations.Count; i++)
+            {
+                if (stations[i] != null && stations[i].type == type) return stations[i];
+            }
+            return null;
+        }
+
+        /// <summary>Offset X NPC penerima relatif pusat ruangan.</summary>
+        public float GetRecipientOffsetX()
+        {
+            StationEntry handover = FindEntry(StationType.Handover);
+            return (handover != null ? handover.offsetX : 0f) + recipientOffsetX;
+        }
+
+        /// <summary>Posisi pusat NPC penerima di world space.</summary>
+        public Vector2 GetRecipientCenter()
+            => new Vector2(roomCenterX + GetRecipientOffsetX(), floorSurfaceY + recipientHeight * 0.5f);
 
         /// <summary>
         /// Layout bawaan sesuai GDD: [COOKING] [PREP] [pintu] [PACKING] [HANDOVER].
@@ -154,6 +191,15 @@ namespace MBG.Kitchen
                     if (max > other.offsetX - otherHalf && min < other.offsetX + otherHalf)
                         problems.Add($"{entry.type} dan {other.type} saling tumpang tindih.");
                 }
+            }
+
+            float npcCenter = GetRecipientOffsetX();
+            float npcHalf = recipientWidth * 0.5f;
+            if (npcCenter - npcHalf < roomMin || npcCenter + npcHalf > roomMax)
+            {
+                problems.Add($"NPC penerima keluar ruangan: rentang " +
+                             $"[{npcCenter - npcHalf:0.##}, {npcCenter + npcHalf:0.##}] " +
+                             $"melewati batas [{roomMin:0.##}, {roomMax:0.##}].");
             }
 
             return problems;

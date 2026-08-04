@@ -36,9 +36,9 @@ namespace MBG.Catering
         {
             switch (quality)
             {
-                case FoodQuality.Perfect: return "SEMPURNA";
-                case FoodQuality.Good: return "LAYAK";
-                case FoodQuality.Bad: return "SEADANYA";
+                case FoodQuality.Perfect: return "PERFECT";
+                case FoodQuality.Good: return "BAIK";
+                case FoodQuality.Bad: return "BURUK";
                 default: return "GAGAL";
             }
         }

@@ -21,14 +21,16 @@ namespace MBG.Kitchen
     [DisallowMultipleComponent]
     public class KitchenStation : MonoBehaviour, IInteractable, IInteractableFocus
     {
-        /// <summary>Prompt saat station tidak relevan dengan langkah masak saat ini.</summary>
-        public const string IrrelevantPrompt = "Belum saatnya";
-
         [Header("Identitas")]
         [SerializeField] StationType stationType = StationType.Prep;
 
         [Tooltip("Kosongkan untuk memakai prompt bawaan tipe station.")]
         [SerializeField] string promptText = "";
+
+        [Tooltip("Prompt saat station belum boleh dipakai. Kosongkan untuk memakai " +
+                 "bawaan tipe station — \"Catering belum siap\" untuk Handover, " +
+                 "\"Belum saatnya\" untuk sisanya.")]
+        [SerializeField] string irrelevantPromptText = "";
 
         [Header("Referensi")]
         [Tooltip("Titik berdiri pemain saat memakai station ini.")]
@@ -81,10 +83,15 @@ namespace MBG.Kitchen
         public bool IsRelevant =>
             !debugForceIrrelevant && (RelevanceCheck == null || RelevanceCheck(stationType));
 
-        public string Prompt => IsRelevant ? ResolvedPrompt : IrrelevantPrompt;
+        public string Prompt => IsRelevant ? ResolvedPrompt : ResolvedIrrelevantPrompt;
 
         string ResolvedPrompt =>
             string.IsNullOrWhiteSpace(promptText) ? stationType.GetDefaultPrompt() : promptText;
+
+        string ResolvedIrrelevantPrompt =>
+            string.IsNullOrWhiteSpace(irrelevantPromptText)
+                ? stationType.GetDefaultIrrelevantPrompt()
+                : irrelevantPromptText;
 
         bool _focused;
         float _alpha;

@@ -24,7 +24,10 @@ Aturan kerja untuk kontributor (manusia maupun AI) ada di [CLAUDE.md](CLAUDE.md)
    pesanan contoh, dan memasang `CateringController` di `__Systems`.
 8. Jalankan menu **Tools > MBG > Build HUD**. Tool ini mengisi `HUDPanel` dengan kartu pesanan,
    uang & skor, timer, petunjuk langkah, dan slot gangguan.
-9. Simpan scene (Ctrl+S).
+9. Jalankan menu **Tools > MBG > Build Result Panel**. Tool ini mengisi layar hasil pesanan.
+10. Jalankan **Tools > MBG > Build Catering Data** sekali lagi supaya `ResultPanel` ikut diikat ke
+    `ScoringConfig`. (Urutan tool bebas — menjalankan ulang selalu aman.)
+11. Simpan scene (Ctrl+S).
 
 Semua tool di atas aman dijalankan berkali-kali (idempoten), mendukung Undo, dan menolak jalan
 saat Play mode.
@@ -51,7 +54,7 @@ ada sistem yang boleh memanggil `Keyboard.current` langsung.
 | --- | --- |
 | `F1` | Cetak ringkasan state ke Console: `GameState`, `IsGameplayActive`, multiplier & status pause `GameClock`, `TextInputMode`, `MoveAxis`, musik aktif |
 | `F2` | Memicu satu `TimingBarQTE` dengan preset `QTE_Normal` dari mana saja, untuk tes cepat |
-| `F3` | Mulai pesanan contoh pertama (`Order_Sekolah_Kecil`, 40 porsi = 2 batch) |
+| `F3` | Mulai hari kerja — mengerjakan seluruh antrian `dayOrders` berurutan |
 | `F4` | Tekan sekali: lompati semua batch → siap diserahkan. Tekan lagi: serahkan pesanan |
 | `F5`–`F12` | Belum dipakai — disediakan untuk sistem berikutnya (obstacle, hari) |
 
@@ -75,6 +78,7 @@ di Inspector `__Systems`.
 | `GameClock.cs` | Sumber waktu gameplay. `GameClock.DeltaTime`, `SetMultiplier()`, `PushPause(reason)` / `PopPause(reason)` berpenghitung |
 | `InputService.cs` | Wrapper keyboard. `MoveAxis`, `SprintHeld`, `InteractPressed`, `ConfirmPressed`, `CancelPressed`, `AnyQTEKeyPressed`, `GetLastPressedKey()`, `OnTextInput`, `BackspacePressed`, `TextInputMode` |
 | `AudioService.cs` | Stub audio (`PlaySFX`, `PlayMusic`, `StopMusic`) plus enum `SfxId` / `MusicId` |
+| `EconomyService.cs` | `Gold` & `Score`, `AddGold()`, `AddScore()`, `SpendGold()`; menerapkan hasil pesanan dan menyiarkan perubahannya |
 | `GameBootstrap.cs` | Menginisialisasi semua service dengan urutan yang benar + debug key |
 | `CoreTypes.cs` | Placeholder `OrderRuntime`, `OrderResult`, `QTEGrade`, `ObstacleType`, `GameOverReason` |
 
@@ -86,7 +90,12 @@ di Inspector `__Systems`.
 | --- | --- |
 | `StationType.cs` | `enum { Prep, Cooking, Packing, Handover }` + prompt & nama bawaan bahasa Indonesia |
 | `KitchenStation.cs` | `IInteractable` + `IInteractableFocus`. Prompt dinamis, highlight saat jadi target terdekat |
+| `RecipientNPC.cs` | Penerima placeholder di seberang counter Handover; muncul saat pesanan dimulai, hilang setelah diserahkan |
 | `KitchenLayoutSO.cs` | Semua angka penataan dapur — asset di `Assets/_Game/Data/KitchenLayout.asset` |
+
+Prompt station saat belum boleh dipakai: **"Belum saatnya"**, kecuali Handover yang memakai
+**"Catering belum siap"**. Saat pesanan sudah `ReadyToDeliver`, Handover berubah menjadi
+**"Serahkan catering"**.
 
 Layout dapur (offset X dari pusat ruangan `x = 1000`, sisi bawah menempel di `y = -2.81`):
 
@@ -112,6 +121,15 @@ tahu apa pun tentang sistem pesanan. Selama belum diisi, semua station relevan.
 | `OrderRuntime.cs` | State pesanan berjalan: porsi, batch, langkah, timer, riwayat grade, `AverageQuality`, `QualityTier` |
 | `OrderResult.cs` | Hasil akhir pesanan (kualitas, porsi, gold, skor, sisa waktu) |
 | `CateringController.cs` | Mengelola pesanan aktif, memicu QTE per langkah, timer deadline |
+
+Alur satu hari:
+
+```
+StartDay(day)  →  OnDayStarted
+  └─ pesanan 1..N dari dayOrders, satu per satu:
+       pesanan selesai / gagal  →  ResultPanel  →  SPASI  →  OnResultAcknowledged
+  └─ antrian habis  →  OnDayCompleted
+```
 
 Alur satu pesanan:
 
@@ -146,7 +164,19 @@ Aturan catering:
 | `RecipeSO.cs` | Nama menu, daftar langkah, `portionsPerBatch` |
 | `RecipientSO.cs` | Institusi pemesan, ikon, `patienceMultiplier` (mengali deadline) |
 | `OrderSO.cs` | Resep + pemesan + porsi + deadline + bayaran dasar |
-| `CateringBalanceSO.cs` | Nilai tiap grade, ambang tingkat kualitas, pengali bayaran |
+| `CateringBalanceSO.cs` | Nilai tiap grade QTE dan ambang tingkat kualitas |
+| `ScoringConfigSO.cs` | **Semua rumus gold & skor** — satu-satunya tempat angka bayaran hidup |
+
+Rumus bayaran (`ScoringConfigSO.CalculateResult`, fungsi murni yang dipanggil
+`CateringController`, `EconomyService`, dan `ResultPanel`):
+
+```
+qualityMultiplier : Perfect 1.5 | Good 1.0 | Bad 0.6 | Failed 0.2
+timeBonus         : (sisa waktu / total waktu) * maxTimeBonus   (default 200)
+gold              : baseGoldReward  * qualityMultiplier + timeBonus
+score             : baseScoreReward * qualityMultiplier + (jumlah Perfect * perfectBonus)
+gagal (timeout)   : gold = -failPenaltyGold (default 150), score = 0
+```
 
 Asset contoh di `Assets/_Game/Data/Catering/`:
 
@@ -206,7 +236,8 @@ Aturan QTE:
 | `UIStyle.cs` | ScriptableObject tema — asset-nya di `Assets/_Game/Data/UIStyle.asset` |
 | `Panels/HUDPanel.cs` | HUD gameplay lengkap (lihat di bawah) |
 | `Panels/QTEPanel.cs` | Bar timing QTE |
-| `Panels/` lainnya | `ResultPanel`, `DaySummaryPanel`, `PausePanel`, `GameOverPanel` (masih kerangka) |
+| `Panels/ResultPanel.cs` | Layar hasil pesanan; mem-pause `GameClock` selama tampil, SPASI untuk lanjut |
+| `Panels/` lainnya | `DaySummaryPanel`, `PausePanel`, `GameOverPanel` (masih kerangka) |
 
 ### HUD
 

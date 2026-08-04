@@ -97,6 +97,19 @@ namespace MBG.Catering
 
         public FoodQuality QualityTier => _balance.GetQualityTier(AverageQuality);
 
+        /// <summary>Berapa QTE yang mendapat Perfect selama pesanan ini.</summary>
+        public int PerfectCount
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < gradeHistory.Count; i++)
+                    if (gradeHistory[i] == QTEGrade.Perfect) count++;
+
+                return count;
+            }
+        }
+
         /// <summary>Catat hasil satu QTE.</summary>
         public void RecordGrade(QTEGrade grade) => gradeHistory.Add(grade);
 

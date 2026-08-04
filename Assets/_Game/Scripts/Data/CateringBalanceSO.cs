@@ -25,11 +25,8 @@ namespace MBG.Data
         [Tooltip("Di bawah ambang ini makanan dianggap gagal.")]
         [Range(0f, 1f)] public float badThreshold = 0.4f;
 
-        [Header("Pengali bayaran per tingkat kualitas")]
-        public float perfectRewardMultiplier = 1.25f;
-        public float goodRewardMultiplier = 1f;
-        public float badRewardMultiplier = 0.6f;
-        public float failedRewardMultiplier = 0.25f;
+        // Pengali bayaran TIDAK ada di sini — semua rumus gold & skor tinggal di
+        // ScoringConfigSO, supaya tidak ada dua sumber kebenaran.
 
         static CateringBalanceSO _fallback;
 
@@ -67,17 +64,6 @@ namespace MBG.Data
             if (averageQuality >= goodThreshold) return FoodQuality.Good;
             if (averageQuality >= badThreshold) return FoodQuality.Bad;
             return FoodQuality.Failed;
-        }
-
-        public float GetRewardMultiplier(FoodQuality quality)
-        {
-            switch (quality)
-            {
-                case FoodQuality.Perfect: return perfectRewardMultiplier;
-                case FoodQuality.Good: return goodRewardMultiplier;
-                case FoodQuality.Bad: return badRewardMultiplier;
-                default: return failedRewardMultiplier;
-            }
         }
 
         void OnValidate()

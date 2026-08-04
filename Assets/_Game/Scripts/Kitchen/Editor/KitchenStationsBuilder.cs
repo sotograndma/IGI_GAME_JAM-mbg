@@ -36,6 +36,8 @@ namespace MBG.Kitchen
         const string LayoutAssetPath = DataFolder + "/KitchenLayout.asset";
         const string PrefabFolder = "Assets/_Game/Prefabs/Kitchen";
         const string PrefabPath = PrefabFolder + "/Station_Generic.prefab";
+        const string RecipientPrefabPath = PrefabFolder + "/Recipient_NPC.prefab";
+        const string RecipientObjectName = "Recipient_NPC";
         const string SquareSpritePath = "Assets/_Placeholder/Sprites/square.png";
 
         // Background interior ada di sorting order -100 dan pemain di 10, jadi
@@ -108,6 +110,10 @@ namespace MBG.Kitchen
             float standY = ResolveStandY(scene, layout);
 
             changed |= ApplyStations(layout, prefab, stationsRoot, square, standY, log);
+
+            GameObject recipientPrefab = EnsureRecipientPrefab(square, log, ref changed);
+            if (recipientPrefab != null)
+                changed |= ApplyRecipientNPC(layout, recipientPrefab, stationsRoot, square, log);
 
             if (changed)
             {
@@ -193,6 +199,132 @@ namespace MBG.Kitchen
             changed = true;
             log.Add($"{PrefabPath} dibuat (root + Highlight + Visual + Label + StandPoint). Tidak ikut ter-undo.");
             return prefab;
+        }
+
+        /// <summary>
+        /// Prefab NPC penerima: kotak berwarna dengan label nama di atasnya, plus
+        /// komponen RecipientNPC yang menyembunyikan visualnya saat tidak ada pesanan.
+        /// </summary>
+        static GameObject EnsureRecipientPrefab(Sprite square, List<string> log, ref bool changed)
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(RecipientPrefabPath);
+            if (existing != null) return existing;
+
+            EnsureFolder(PrefabFolder);
+
+            var root = new GameObject(RecipientObjectName);
+            root.AddComponent<RecipientNPC>();
+
+            var visual = new GameObject("Visual");
+            visual.transform.SetParent(root.transform, false);
+
+            CreateSpriteChild("Body", visual.transform, square, VisualSortingOrder);
+
+            var labelGo = new GameObject("NameLabel", typeof(RectTransform));
+            labelGo.transform.SetParent(visual.transform, false);
+            var label = labelGo.AddComponent<TextMeshPro>();
+            label.alignment = TextAlignmentOptions.Center;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.text = "Penerima";
+            var labelRenderer = labelGo.GetComponent<MeshRenderer>();
+            if (labelRenderer != null) labelRenderer.sortingOrder = LabelSortingOrder;
+
+            GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, RecipientPrefabPath);
+            Object.DestroyImmediate(root);
+
+            if (prefab == null)
+            {
+                Debug.LogError($"[MBG] Gagal menyimpan prefab ke {RecipientPrefabPath}.");
+                return null;
+            }
+
+            changed = true;
+            log.Add($"{RecipientPrefabPath} dibuat (Visual + Body + NameLabel). Tidak ikut ter-undo.");
+            return prefab;
+        }
+
+        static bool ApplyRecipientNPC(KitchenLayoutSO layout, GameObject prefab, Transform stationsRoot,
+                                      Sprite square, List<string> log)
+        {
+            bool changed = false;
+
+            Transform existing = stationsRoot.Find(RecipientObjectName);
+            RecipientNPC npc = existing != null ? existing.GetComponent<RecipientNPC>() : null;
+
+            if (npc == null)
+            {
+                var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, stationsRoot);
+                Undo.RegisterCreatedObjectUndo(instance, "Create Recipient_NPC");
+                instance.name = RecipientObjectName;
+
+                npc = instance.GetComponent<RecipientNPC>();
+                changed = true;
+                log.Add($"{RecipientObjectName} dibuat di seberang counter Handover.");
+            }
+
+            GameObject go = npc.gameObject;
+            Undo.RecordObject(go.transform, "Configure Recipient");
+
+            Vector2 center = layout.GetRecipientCenter();
+            if ((Vector2)go.transform.position != center)
+            {
+                go.transform.position = new Vector3(center.x, center.y, go.transform.position.z);
+                changed = true;
+            }
+
+            Vector3 spriteSize = square.bounds.size;
+            if (spriteSize.x <= 0f || spriteSize.y <= 0f) spriteSize = Vector3.one;
+
+            Transform visual = go.transform.Find("Visual");
+            Transform body = visual != null ? visual.Find("Body") : null;
+            var bodyRenderer = body != null ? body.GetComponent<SpriteRenderer>() : null;
+
+            if (bodyRenderer != null)
+            {
+                changed |= ApplySpriteBox(body, bodyRenderer, spriteSize,
+                                          layout.recipientWidth, layout.recipientHeight,
+                                          layout.recipientColor, VisualSortingOrder);
+            }
+
+            Transform labelTransform = visual != null ? visual.Find("NameLabel") : null;
+            var label = labelTransform != null ? labelTransform.GetComponent<TMP_Text>() : null;
+
+            if (label != null)
+            {
+                Undo.RecordObject(label, "Configure Recipient");
+                Undo.RecordObject(labelTransform, "Configure Recipient");
+
+                var labelPos = new Vector3(0f, layout.recipientHeight * 0.5f + layout.recipientLabelOffsetY, 0f);
+                Color labelColor = UIStyleTextColor();
+
+                if (labelTransform.localPosition != labelPos
+                    || !Mathf.Approximately(label.fontSize, layout.recipientLabelFontSize)
+                    || label.color != labelColor)
+                {
+                    labelTransform.localPosition = labelPos;
+                    label.fontSize = layout.recipientLabelFontSize;
+                    label.color = labelColor;
+                    label.alignment = TextAlignmentOptions.Center;
+                    changed = true;
+                }
+
+                if (label.rectTransform != null)
+                {
+                    var sizeDelta = new Vector2(4f, 0.6f);
+                    if (label.rectTransform.sizeDelta != sizeDelta)
+                    {
+                        label.rectTransform.sizeDelta = sizeDelta;
+                        changed = true;
+                    }
+                }
+            }
+
+            var so = new SerializedObject(npc);
+            changed |= SetObject(so, "visualRoot", visual != null ? visual.gameObject : null);
+            changed |= SetObject(so, "nameLabel", label);
+            so.ApplyModifiedProperties();
+
+            return changed;
         }
 
         static GameObject CreateSpriteChild(string name, Transform parent, Sprite sprite, int sortingOrder)
@@ -410,6 +542,7 @@ namespace MBG.Kitchen
             var so = new SerializedObject(station);
             changed |= SetEnum(so, "stationType", (int)entry.type);
             changed |= SetString(so, "promptText", entry.promptOverride ?? "");
+            changed |= SetString(so, "irrelevantPromptText", entry.irrelevantPromptOverride ?? "");
             changed |= SetObject(so, "playerStandPoint", stand);
             changed |= SetObject(so, "highlight", highlightRenderer);
             changed |= SetFloat(so, "highlightAlpha", layout.highlightAlpha);

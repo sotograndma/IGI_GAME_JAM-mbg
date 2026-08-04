@@ -28,6 +28,19 @@ namespace MBG.Kitchen
         }
 
         /// <summary>
+        /// Prompt saat station belum boleh dipakai. Handover punya kalimatnya
+        /// sendiri karena "Belum saatnya" tidak menjelaskan apa yang kurang.
+        /// </summary>
+        public static string GetDefaultIrrelevantPrompt(this StationType type)
+        {
+            switch (type)
+            {
+                case StationType.Handover: return "Catering belum siap";
+                default: return "Belum saatnya";
+            }
+        }
+
+        /// <summary>
         /// Sebutan tempat untuk dipakai di dalam kalimat, misal
         /// "Berikutnya: Potong sayur di <b>meja persiapan</b>".
         /// </summary>

@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7ae01b05bb1ffbf4c86ac3ecad6fdf80, type: 3}
+  m_Name: ScoringConfig
+  m_EditorClassIdentifier: Assembly-CSharp::MBG.Data.ScoringConfigSO
+  perfectMultiplier: 1.5
+  goodMultiplier: 1
+  badMultiplier: 0.6
+  failedMultiplier: 0.2
+  maxTimeBonus: 200
+  perfectBonus: 50
+  failPenaltyGold: 150
+  startingGold: 500

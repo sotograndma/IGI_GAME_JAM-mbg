@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using MBG.Catering;
 using MBG.Core;
 using UnityEngine;
 
@@ -45,6 +46,8 @@ namespace MBG.UI
             // memanggil UI. Disubscribe di Awake (bukan OnEnable) supaya tetap
             // jalan walau panelnya sendiri sedang nonaktif.
             GameEventBus.OnGameStateChanged += HandleGameStateChanged;
+            GameEventBus.OnOrderCompleted += HandleOrderCompleted;
+            GameEventBus.OnOrderFailed += HandleOrderFailed;
 
             if (style == null && !_missingStyleWarned)
             {
@@ -57,7 +60,26 @@ namespace MBG.UI
         void OnDestroy()
         {
             GameEventBus.OnGameStateChanged -= HandleGameStateChanged;
+            GameEventBus.OnOrderCompleted -= HandleOrderCompleted;
+            GameEventBus.OnOrderFailed -= HandleOrderFailed;
+
             if (Instance == this) Instance = null;
+        }
+
+        /// <summary>
+        /// Layar hasil dimunculkan dari sini, bukan dipanggil sistem catering —
+        /// UIManager memang perannya menerjemahkan event bus menjadi panel.
+        /// </summary>
+        void HandleOrderCompleted(OrderResult result)
+        {
+            ResultPanel panel = GetPanel<ResultPanel>();
+            if (panel != null) panel.ShowSuccess(result);
+        }
+
+        void HandleOrderFailed(OrderRuntime order)
+        {
+            ResultPanel panel = GetPanel<ResultPanel>();
+            if (panel != null) panel.ShowFailure(order);
         }
 
         /// <summary>

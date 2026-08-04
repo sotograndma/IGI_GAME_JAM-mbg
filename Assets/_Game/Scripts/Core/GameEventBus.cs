@@ -28,6 +28,12 @@ namespace MBG.Core
         public static event Action<OrderResult> OnOrderCompleted;
         public static event Action<OrderRuntime> OnOrderFailed;
 
+        /// <summary>
+        /// Pemain menutup layar hasil pesanan. Ini sinyal bagi sistem catering
+        /// untuk melanjutkan ke pesanan berikutnya di antrian hari itu.
+        /// </summary>
+        public static event Action OnResultAcknowledged;
+
         // ---- Kitchen ----------------------------------------------------
         // Catatan: ini satu-satunya tempat MBG.Core menyebut tipe dari MBG.Kitchen.
         // Aman selama semuanya masih di assembly Assembly-CSharp. TODO: kalau nanti
@@ -76,6 +82,9 @@ namespace MBG.Core
         public static void RaiseOrderFailed(OrderRuntime order)
             => OnOrderFailed?.Invoke(order);
 
+        public static void RaiseResultAcknowledged()
+            => OnResultAcknowledged?.Invoke();
+
         public static void RaiseStationUsed(StationType type)
             => OnStationUsed?.Invoke(type);
 
@@ -122,6 +131,7 @@ namespace MBG.Core
             OnOrderProgress = null;
             OnOrderCompleted = null;
             OnOrderFailed = null;
+            OnResultAcknowledged = null;
 
             OnStationUsed = null;
 
