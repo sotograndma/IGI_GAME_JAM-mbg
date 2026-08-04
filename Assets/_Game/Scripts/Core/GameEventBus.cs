@@ -2,6 +2,7 @@ using System;
 using MBG.Catering;
 using MBG.Kitchen;
 using MBG.QTE;
+using MBG.World;
 using UnityEngine;
 
 namespace MBG.Core
@@ -60,6 +61,10 @@ namespace MBG.Core
 
         // ---- Day flow ---------------------------------------------------
         public static event Action<int> OnDayStarted;
+
+        /// <summary>Rekap hari, dipancarkan tepat sebelum <see cref="OnDayCompleted"/>.</summary>
+        public static event Action<DayStats> OnDaySummary;
+
         public static event Action<int> OnDayCompleted;
         public static event Action<GameOverReason> OnGameOver;
 
@@ -112,6 +117,9 @@ namespace MBG.Core
         public static void RaiseDayStarted(int day)
             => OnDayStarted?.Invoke(day);
 
+        public static void RaiseDaySummary(DayStats stats)
+            => OnDaySummary?.Invoke(stats);
+
         public static void RaiseDayCompleted(int day)
             => OnDayCompleted?.Invoke(day);
 
@@ -146,6 +154,7 @@ namespace MBG.Core
             OnReputationChanged = null;
 
             OnDayStarted = null;
+            OnDaySummary = null;
             OnDayCompleted = null;
             OnGameOver = null;
         }

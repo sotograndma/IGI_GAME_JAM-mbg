@@ -35,13 +35,20 @@ namespace MBG.Catering
 
         readonly CateringBalanceSO _balance;
 
-        public OrderRuntime(OrderSO source, CateringBalanceSO balance)
+        /// <summary>Deadline awal pesanan ini setelah dikali pengali hari.</summary>
+        public float TotalDeadline { get; }
+
+        public OrderRuntime(OrderSO source, CateringBalanceSO balance, float deadlineMultiplier = 1f)
         {
             this.source = source;
             _balance = balance != null ? balance : CateringBalanceSO.Fallback;
 
             totalPortions = source != null ? source.totalPortions : 0;
-            timeRemaining = source != null ? source.EffectiveDeadline : 0f;
+
+            float baseDeadline = source != null ? source.EffectiveDeadline : 0f;
+            TotalDeadline = baseDeadline * Mathf.Max(0.1f, deadlineMultiplier);
+            timeRemaining = TotalDeadline;
+
             state = OrderState.Cooking;
         }
 
@@ -69,13 +76,7 @@ namespace MBG.Catering
 
         /// <summary>Sisa waktu sebagai fraksi deadline awal, 0..1.</summary>
         public float TimeRemaining01
-        {
-            get
-            {
-                float total = source != null ? source.EffectiveDeadline : 0f;
-                return total > 0f ? Mathf.Clamp01(timeRemaining / total) : 0f;
-            }
-        }
+            => TotalDeadline > 0f ? Mathf.Clamp01(timeRemaining / TotalDeadline) : 0f;
 
         /// <summary>
         /// Rata-rata nilai seluruh QTE, 0..1. Sebelum ada satu pun QTE nilainya 1 —

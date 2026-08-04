@@ -19,6 +19,10 @@ namespace MBG.Core
         [Header("State awal")]
         [SerializeField] GameState initialState = GameState.Boot;
 
+        [Header("Jeda")]
+        [Tooltip("Escape saat bermain membuka menu jeda, dan menutupnya lagi.")]
+        [SerializeField] bool allowPauseToggle = true;
+
         [Header("Debug")]
         [SerializeField] bool logStateChanges = true;
 
@@ -31,6 +35,7 @@ namespace MBG.Core
         public bool IsGameplayActive => State.IsGameplay();
 
         bool _initialized;
+        PlayerController2D _player;
 
         void Awake() => Initialize();
 
@@ -51,9 +56,49 @@ namespace MBG.Core
             _initialized = true;
         }
 
+        void OnEnable()
+        {
+            if (Instance != this) return;
+            GameEventBus.OnGameOver += HandleGameOver;
+        }
+
+        void OnDisable()
+        {
+            if (Instance != this) return;
+            GameEventBus.OnGameOver -= HandleGameOver;
+        }
+
         void OnDestroy()
         {
             if (Instance == this) Instance = null;
+        }
+
+        void Update()
+        {
+            if (!allowPauseToggle) return;
+            if (!InputService.CancelPressed) return;
+
+            // Escape hanya bekerja di dua arah antara bermain dan jeda; state lain
+            // (QTE, ringkasan hari, game over) punya alurnya sendiri.
+            if (State == GameState.Playing) ChangeState(GameState.Paused);
+            else if (State == GameState.Paused) ChangeState(GameState.Playing);
+        }
+
+        /// <summary>Siapa pun yang menyatakan permainan berakhir cukup memancarkan event.</summary>
+        void HandleGameOver(GameOverReason reason)
+        {
+            if (State == GameState.GameOver) return;
+            ChangeState(GameState.GameOver);
+        }
+
+        /// <summary>Keluar dari permainan; di Editor cukup menghentikan Play mode.</summary>
+        public static void QuitGame()
+        {
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
         }
 
         /// <summary>
@@ -72,6 +117,8 @@ namespace MBG.Core
 
             if (prev == GameState.Paused) GameClock.PopPause(PauseReason);
             if (next == GameState.Paused) GameClock.PushPause(PauseReason);
+
+            ApplyPlayerFreeze(next);
 
             if (logStateChanges)
                 Debug.Log($"[GameManager] State: {prev} -> {next}", this);
@@ -100,6 +147,25 @@ namespace MBG.Core
             InputService.Shutdown();
 
             SceneManager.LoadScene(active.buildIndex);
+        }
+
+        /// <summary>
+        /// Pemain hanya boleh bergerak saat benar-benar bermain. GameClock yang
+        /// di-pause tidak cukup: PlayerController2D berjalan di FixedUpdate dengan
+        /// waktu fisika sendiri, jadi tanpa ini karakter masih bisa jalan-jalan di
+        /// balik menu jeda.
+        ///
+        /// InQTE dan InObstacle sengaja dilewati — pembekuannya sudah diurus sistem
+        /// masing-masing, dan mencampurinya di sini akan membuat dua sumber perintah.
+        /// </summary>
+        void ApplyPlayerFreeze(GameState state)
+        {
+            if (state == GameState.InQTE || state == GameState.InObstacle) return;
+
+            if (_player == null)
+                _player = FindAnyObjectByType<PlayerController2D>(FindObjectsInactive.Include);
+
+            if (_player != null) _player.SetFrozen(state != GameState.Playing);
         }
 
         /// <summary>Ringkasan state untuk debug key F1.</summary>

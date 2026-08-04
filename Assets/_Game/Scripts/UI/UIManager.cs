@@ -48,6 +48,8 @@ namespace MBG.UI
             GameEventBus.OnGameStateChanged += HandleGameStateChanged;
             GameEventBus.OnOrderCompleted += HandleOrderCompleted;
             GameEventBus.OnOrderFailed += HandleOrderFailed;
+            GameEventBus.OnDaySummary += HandleDaySummary;
+            GameEventBus.OnGameOver += HandleGameOver;
 
             if (style == null && !_missingStyleWarned)
             {
@@ -62,8 +64,22 @@ namespace MBG.UI
             GameEventBus.OnGameStateChanged -= HandleGameStateChanged;
             GameEventBus.OnOrderCompleted -= HandleOrderCompleted;
             GameEventBus.OnOrderFailed -= HandleOrderFailed;
+            GameEventBus.OnDaySummary -= HandleDaySummary;
+            GameEventBus.OnGameOver -= HandleGameOver;
 
             if (Instance == this) Instance = null;
+        }
+
+        void HandleDaySummary(World.DayStats stats)
+        {
+            DaySummaryPanel panel = GetPanel<DaySummaryPanel>();
+            if (panel != null) panel.ShowSummary(stats);
+        }
+
+        void HandleGameOver(GameOverReason reason)
+        {
+            GameOverPanel panel = GetPanel<GameOverPanel>();
+            if (panel != null) panel.ShowGameOver(reason);
         }
 
         /// <summary>
@@ -84,8 +100,10 @@ namespace MBG.UI
 
         /// <summary>
         /// Pemetaan GameState ke panel.
-        /// TODO: Paused -> PausePanel, GameOver -> GameOverPanel,
-        /// DaySummary -> DaySummaryPanel begitu isinya ada.
+        ///
+        /// DaySummaryPanel dan GameOverPanel sengaja hanya DISEMBUNYIKAN di sini:
+        /// keduanya butuh data (rekap hari, sebab kalah), jadi yang memunculkannya
+        /// adalah HandleDaySummary / HandleGameOver.
         /// </summary>
         void HandleGameStateChanged(GameState previous, GameState next)
         {
@@ -97,6 +115,25 @@ namespace MBG.UI
             bool hudVisible = next == GameState.Playing || next == GameState.InQTE;
             if (hudVisible) ShowPanel<HUDPanel>();
             else HidePanel<HUDPanel>();
+
+            if (next == GameState.MainMenu)
+            {
+                ShowPanel<MainMenuPanel>();
+            }
+            else if (previous == GameState.MainMenu)
+            {
+                HidePanel<MainMenuPanel>();
+                HidePanel<HowToPlayPanel>();
+            }
+
+            if (next == GameState.Paused) ShowPanel<PausePanel>();
+            else if (previous == GameState.Paused) HidePanel<PausePanel>();
+
+            if (previous == GameState.DaySummary && next != GameState.DaySummary)
+                HidePanel<DaySummaryPanel>();
+
+            if (previous == GameState.GameOver && next != GameState.GameOver)
+                HidePanel<GameOverPanel>();
         }
 
         /// <summary>

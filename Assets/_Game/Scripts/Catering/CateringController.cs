@@ -38,11 +38,8 @@ namespace MBG.Catering
         [Tooltip("Rumus gold & skor. Diisi otomatis oleh Tools > MBG > Build Catering Data.")]
         [SerializeField] ScoringConfigSO scoring;
 
-        [Tooltip("Antrian pesanan untuk satu hari, dikerjakan berurutan.")]
-        [SerializeField] List<OrderSO> dayOrders = new();
-
         [Header("Debug")]
-        [Tooltip("F3 memulai hari (antrian dari awal), F4 menyelesaikan pesanan aktif.")]
+        [Tooltip("F4 menyelesaikan pesanan aktif secara bertahap.")]
         [SerializeField] bool enableDebugKeys = true;
 
         public static CateringController Instance { get; private set; }
@@ -52,9 +49,6 @@ namespace MBG.Catering
 
         public bool HasActiveOrder => ActiveOrder != null && ActiveOrder.IsActive;
 
-        /// <summary>Hari keberapa yang sedang berjalan.</summary>
-        public int CurrentDay { get; private set; } = 1;
-
         /// <summary>Rumus bayaran yang dipakai; jatuh ke nilai bawaan kalau asset belum diikat.</summary>
         public ScoringConfigSO Scoring => scoring != null ? scoring : ScoringConfigSO.Fallback;
 
@@ -63,9 +57,6 @@ namespace MBG.Catering
             => GameManager.Instance != null && GameManager.Instance.State == GameState.InObstacle;
 
         Func<StationType, bool> _relevanceCheck;
-
-        int _queueIndex = -1;
-        bool _dayRunning;
 
         void Awake()
         {
@@ -85,7 +76,6 @@ namespace MBG.Catering
             if (Instance != this) return;
 
             GameEventBus.OnStationUsed += HandleStationUsed;
-            GameEventBus.OnResultAcknowledged += HandleResultAcknowledged;
             KitchenStation.RelevanceCheck = _relevanceCheck;
         }
 
@@ -94,7 +84,6 @@ namespace MBG.Catering
             if (Instance != this) return;
 
             GameEventBus.OnStationUsed -= HandleStationUsed;
-            GameEventBus.OnResultAcknowledged -= HandleResultAcknowledged;
 
             // Hanya lepas kalau memang punya kita — jangan menimpa milik sistem lain.
             if (ReferenceEquals(KitchenStation.RelevanceCheck, _relevanceCheck))
@@ -112,72 +101,14 @@ namespace MBG.Catering
             TickDeadline();
         }
 
-        // ---- Antrian hari ---------------------------------------------------
-
-        /// <summary>
-        /// Mulai satu hari kerja: kerjakan seluruh <see cref="dayOrders"/> berurutan.
-        /// Pesanan berikutnya baru dimulai setelah pemain menutup layar hasil.
-        /// </summary>
-        public void StartDay(int day = 1)
-        {
-            if (dayOrders == null || dayOrders.Count == 0)
-            {
-                Debug.LogWarning("[Catering] Antrian pesanan kosong. " +
-                                 "Jalankan Tools > MBG > Build Catering Data.", this);
-                return;
-            }
-
-            if (_dayRunning)
-            {
-                Debug.LogWarning($"[Catering] Hari {CurrentDay} masih berjalan.", this);
-                return;
-            }
-
-            CurrentDay = day;
-            _queueIndex = -1;
-            _dayRunning = true;
-
-            Debug.Log($"[Catering] Hari {day} dimulai — {dayOrders.Count} pesanan dalam antrian.", this);
-            GameEventBus.RaiseDayStarted(day);
-
-            AdvanceQueue();
-        }
-
-        /// <summary>Ambil pesanan berikutnya, atau tutup hari kalau antrian habis.</summary>
-        void AdvanceQueue()
-        {
-            if (!_dayRunning) return;
-
-            _queueIndex++;
-
-            while (_queueIndex < dayOrders.Count && dayOrders[_queueIndex] == null)
-                _queueIndex++;
-
-            if (_queueIndex >= dayOrders.Count)
-            {
-                CompleteDay();
-                return;
-            }
-
-            Debug.Log($"[Catering] Pesanan {_queueIndex + 1}/{dayOrders.Count} hari ini.", this);
-            StartOrder(dayOrders[_queueIndex]);
-        }
-
-        void CompleteDay()
-        {
-            _dayRunning = false;
-
-            Debug.Log($"[Catering] Antrian habis — hari {CurrentDay} selesai.", this);
-            GameEventBus.RaiseDayCompleted(CurrentDay);
-        }
-
-        /// <summary>Pemain menutup layar hasil: lanjut ke pesanan berikutnya.</summary>
-        void HandleResultAcknowledged() => AdvanceQueue();
-
         // ---- API -----------------------------------------------------------
 
-        /// <summary>Mulai pesanan baru. Mengembalikan null kalau ditolak.</summary>
-        public OrderRuntime StartOrder(OrderSO order)
+        /// <summary>
+        /// Mulai pesanan baru. Mengembalikan null kalau ditolak.
+        /// Antrian dan pergantian pesanan diurus <c>DayManager</c>, bukan di sini —
+        /// controller ini hanya tahu satu pesanan yang sedang dikerjakan.
+        /// </summary>
+        public OrderRuntime StartOrder(OrderSO order, float deadlineMultiplier = 1f)
         {
             if (order == null)
             {
@@ -197,7 +128,7 @@ namespace MBG.Catering
                 return null;
             }
 
-            ActiveOrder = new OrderRuntime(order, balance);
+            ActiveOrder = new OrderRuntime(order, balance, deadlineMultiplier);
 
             Debug.Log($"[Catering] Pesanan dimulai — {ActiveOrder.Describe()}", this);
             AudioService.PlaySFX(SfxId.OrderIncoming);
@@ -379,22 +310,7 @@ namespace MBG.Catering
 
         void HandleDebugKeys()
         {
-            if (InputService.WasKeyPressedThisFrame(Key.F3)) DebugStartDay();
             if (InputService.WasKeyPressedThisFrame(Key.F4)) DebugFinishActiveOrder();
-        }
-
-        void DebugStartDay()
-        {
-            if (HasActiveOrder)
-            {
-                Debug.Log($"[Catering] F3: masih ada pesanan berjalan — {ActiveOrder.Describe()}", this);
-                return;
-            }
-
-            // Hari yang sudah selesai bisa dimulai ulang untuk tes berikutnya.
-            if (_dayRunning) _dayRunning = false;
-
-            StartDay(CurrentDay);
         }
 
         /// <summary>

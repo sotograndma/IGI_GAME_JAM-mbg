@@ -19,9 +19,9 @@ namespace MBG.Core
     public class GameBootstrap : MonoBehaviour
     {
         [Header("Alur awal")]
-        [Tooltip("Pindah otomatis dari Boot ke Playing saat scene mulai. Matikan kalau " +
-                 "nanti sudah ada main menu yang mengatur perpindahan state sendiri.")]
-        [SerializeField] bool enterPlayingOnStart = true;
+        [Tooltip("State yang dituju dari Boot saat scene mulai. Default MainMenu — " +
+                 "pemain baru masuk gameplay setelah menekan Mulai.")]
+        [SerializeField] GameState startingState = GameState.MainMenu;
 
         [Header("Debug")]
         [Tooltip("F1 mencetak ringkasan state ke console.")]
@@ -59,8 +59,8 @@ namespace MBG.Core
 
         void Start()
         {
-            if (enterPlayingOnStart && _gameManager != null && _gameManager.State == GameState.Boot)
-                _gameManager.ChangeState(GameState.Playing);
+            if (_gameManager != null && _gameManager.State == GameState.Boot && startingState != GameState.Boot)
+                _gameManager.ChangeState(startingState);
         }
 
         void Update()

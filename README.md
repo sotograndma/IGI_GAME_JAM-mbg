@@ -25,9 +25,11 @@ Aturan kerja untuk kontributor (manusia maupun AI) ada di [CLAUDE.md](CLAUDE.md)
 8. Jalankan menu **Tools > MBG > Build HUD**. Tool ini mengisi `HUDPanel` dengan kartu pesanan,
    uang & skor, timer, petunjuk langkah, dan slot gangguan.
 9. Jalankan menu **Tools > MBG > Build Result Panel**. Tool ini mengisi layar hasil pesanan.
-10. Jalankan **Tools > MBG > Build Catering Data** sekali lagi supaya `ResultPanel` ikut diikat ke
-    `ScoringConfig`. (Urutan tool bebas — menjalankan ulang selalu aman.)
-11. Simpan scene (Ctrl+S).
+10. Jalankan menu **Tools > MBG > Build Menu Panels**. Tool ini mengisi menu utama, cara bermain,
+    jeda, ringkasan hari, layar kalah, dan membuat `EventSystem` yang dibutuhkan tombol UI.
+11. Jalankan **Tools > MBG > Build Catering Data** sekali lagi supaya `ResultPanel` dan `DayManager`
+    ikut terikat. (Urutan tool bebas — menjalankan ulang selalu aman.)
+12. Simpan scene (Ctrl+S).
 
 Semua tool di atas aman dijalankan berkali-kali (idempoten), mendukung Undo, dan menolak jalan
 saat Play mode.
@@ -54,7 +56,7 @@ ada sistem yang boleh memanggil `Keyboard.current` langsung.
 | --- | --- |
 | `F1` | Cetak ringkasan state ke Console: `GameState`, `IsGameplayActive`, multiplier & status pause `GameClock`, `TextInputMode`, `MoveAxis`, musik aktif |
 | `F2` | Memicu satu `TimingBarQTE` dengan preset `QTE_Normal` dari mana saja, untuk tes cepat |
-| `F3` | Mulai hari kerja — mengerjakan seluruh antrian `dayOrders` berurutan |
+| `F3` | Mulai hari kerja langsung, tanpa lewat menu utama |
 | `F4` | Tekan sekali: lompati semua batch → siap diserahkan. Tekan lagi: serahkan pesanan |
 | `F5`–`F12` | Belum dipakai — disediakan untuk sistem berikutnya (obstacle, hari) |
 
@@ -78,7 +80,9 @@ di Inspector `__Systems`.
 | `GameClock.cs` | Sumber waktu gameplay. `GameClock.DeltaTime`, `SetMultiplier()`, `PushPause(reason)` / `PopPause(reason)` berpenghitung |
 | `InputService.cs` | Wrapper keyboard. `MoveAxis`, `SprintHeld`, `InteractPressed`, `ConfirmPressed`, `CancelPressed`, `AnyQTEKeyPressed`, `GetLastPressedKey()`, `OnTextInput`, `BackspacePressed`, `TextInputMode` |
 | `AudioService.cs` | Stub audio (`PlaySFX`, `PlayMusic`, `StopMusic`) plus enum `SfxId` / `MusicId` |
-| `EconomyService.cs` | `Gold` & `Score`, `AddGold()`, `AddScore()`, `SpendGold()`; menerapkan hasil pesanan dan menyiarkan perubahannya |
+| `EconomyService.cs` | `Gold`, `Score`, `Reputation`; menerapkan hasil pesanan dan menyiarkan perubahannya. Reputasi 0 memancarkan `OnGameOver` |
+| `HighScoreStore.cs` | Satu-satunya pemakaian `PlayerPrefs` di project ini (key `MBG_HighScore`) |
+| `GameOverReason.cs` | `enum { ReputationZero, Bankrupt, OrmasInvasion, SantetFatal }` + kalimat bahasa Indonesia |
 | `GameBootstrap.cs` | Menginisialisasi semua service dengan urutan yang benar + debug key |
 | `CoreTypes.cs` | Placeholder `OrderRuntime`, `OrderResult`, `QTEGrade`, `ObstacleType`, `GameOverReason` |
 
@@ -122,15 +126,6 @@ tahu apa pun tentang sistem pesanan. Selama belum diisi, semua station relevan.
 | `OrderResult.cs` | Hasil akhir pesanan (kualitas, porsi, gold, skor, sisa waktu) |
 | `CateringController.cs` | Mengelola pesanan aktif, memicu QTE per langkah, timer deadline |
 
-Alur satu hari:
-
-```
-StartDay(day)  →  OnDayStarted
-  └─ pesanan 1..N dari dayOrders, satu per satu:
-       pesanan selesai / gagal  →  ResultPanel  →  SPASI  →  OnResultAcknowledged
-  └─ antrian habis  →  OnDayCompleted
-```
-
 Alur satu pesanan:
 
 ```
@@ -156,6 +151,27 @@ Aturan catering:
   **Timer deadline tetap berjalan** — obstacle nanti memperlambatnya lewat `GameClock.SetMultiplier`.
 - Timer memakai `GameClock.DeltaTime`.
 
+## Alur permainan (`Assets/_Game/Scripts/World/`, namespace `MBG.World`)
+
+| File | Isi |
+| --- | --- |
+| `DayManager.cs` | Antrian pesanan per hari, jeda antar pesanan, penutupan hari |
+| `DayStats.cs` | Rekap satu hari (gold, skor, sukses/gagal, reputasi) |
+
+```
+MainMenu ──[Mulai]──> Playing
+   Hari N: pesanan 1..M dari DayConfigSO
+     pesanan selesai/gagal → ResultPanel → SPASI → jeda timeBetweenOrders
+   antrian habis → OnDaySummary + OnDayCompleted → DaySummary
+     [Lanjut ke Hari Berikutnya] → hari N+1
+     hari terakhir → layar kemenangan → reload scene → MainMenu
+   reputasi 0 → OnGameOver → GameOver → [Ulangi] reload scene
+Escape saat Playing → Paused → [Lanjut] / [Ulangi] / [Menu Utama]
+```
+
+Pembagian tugas: `DayManager` tahu antrian dan urutan hari; `CateringController` hanya tahu satu
+pesanan yang sedang dimasak. Keduanya berbicara lewat event bus.
+
 ## Lapisan Data (`Assets/_Game/Scripts/Data/`, namespace `MBG.Data`)
 
 | File | Isi |
@@ -165,6 +181,7 @@ Aturan catering:
 | `RecipientSO.cs` | Institusi pemesan, ikon, `patienceMultiplier` (mengali deadline) |
 | `OrderSO.cs` | Resep + pemesan + porsi + deadline + bayaran dasar |
 | `CateringBalanceSO.cs` | Nilai tiap grade QTE dan ambang tingkat kualitas |
+| `DayConfigSO.cs` | Isi satu hari: pesanan, jeda antar pesanan, jadwal gangguan, pengali deadline |
 | `ScoringConfigSO.cs` | **Semua rumus gold & skor** — satu-satunya tempat angka bayaran hidup |
 
 Rumus bayaran (`ScoringConfigSO.CalculateResult`, fungsi murni yang dipanggil
@@ -237,7 +254,11 @@ Aturan QTE:
 | `Panels/HUDPanel.cs` | HUD gameplay lengkap (lihat di bawah) |
 | `Panels/QTEPanel.cs` | Bar timing QTE |
 | `Panels/ResultPanel.cs` | Layar hasil pesanan; mem-pause `GameClock` selama tampil, SPASI untuk lanjut |
-| `Panels/` lainnya | `DaySummaryPanel`, `PausePanel`, `GameOverPanel` (masih kerangka) |
+| `Panels/MainMenuPanel.cs` | Judul, Mulai, Cara Bermain, Keluar |
+| `Panels/HowToPlayPanel.cs` | Daftar kontrol dan cara main |
+| `Panels/PausePanel.cs` | Lanjut, Ulangi, Menu Utama |
+| `Panels/DaySummaryPanel.cs` | Rekap hari; berubah jadi layar kemenangan setelah hari terakhir |
+| `Panels/GameOverPanel.cs` | Sebab kalah, statistik akhir, high score, Ulangi & Keluar |
 
 ### HUD
 

@@ -42,6 +42,34 @@ namespace MBG.Data
         [Min(0)]
         public int startingGold = 500;
 
+        [Header("Reputasi")]
+        [Min(1)]
+        public int startingReputation = 3;
+
+        [Min(1)]
+        public int maxReputation = 5;
+
+        [Tooltip("Perubahan reputasi saat pesanan diserahkan dengan kualitas PERFECT.")]
+        public int reputationOnPerfect = 1;
+
+        public int reputationOnGood = 0;
+        public int reputationOnBad = -1;
+
+        [Tooltip("Perubahan reputasi saat pesanan gagal atau kualitasnya GAGAL.")]
+        public int reputationOnFailed = -2;
+
+        /// <summary>Berapa reputasi bertambah/berkurang untuk satu hasil pesanan.</summary>
+        public int GetReputationDelta(FoodQuality quality)
+        {
+            switch (quality)
+            {
+                case FoodQuality.Perfect: return reputationOnPerfect;
+                case FoodQuality.Good: return reputationOnGood;
+                case FoodQuality.Bad: return reputationOnBad;
+                default: return reputationOnFailed;
+            }
+        }
+
         static ScoringConfigSO _fallback;
 
         /// <summary>Dipakai kalau asset-nya belum diikat, supaya permainan tetap jalan.</summary>
@@ -100,9 +128,9 @@ namespace MBG.Data
 
             float multiplier = GetQualityMultiplier(result.quality);
 
-            float totalTime = order.source != null ? order.source.EffectiveDeadline : 0f;
-            float ratio = totalTime > 0f ? Mathf.Clamp01(order.timeRemaining / totalTime) : 0f;
-            result.timeBonusGold = Mathf.RoundToInt(ratio * maxTimeBonus);
+            // Rasio dihitung dari deadline yang benar-benar dipakai pesanan ini,
+            // termasuk pengali hari — bukan dari angka mentah di OrderSO.
+            result.timeBonusGold = Mathf.RoundToInt(order.TimeRemaining01 * maxTimeBonus);
 
             int baseGold = order.source != null ? order.source.baseGoldReward : 0;
             int baseScore = order.source != null ? order.source.baseScoreReward : 0;

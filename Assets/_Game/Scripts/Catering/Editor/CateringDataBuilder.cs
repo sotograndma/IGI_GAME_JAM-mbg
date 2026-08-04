@@ -78,10 +78,13 @@ namespace MBG.Catering
                 EnsureOrder("Order_Sekolah_Besar", recipe, recipient, 200, 480f, 1600, 3000, log, ref changed),
             };
 
+            List<DayConfigSO> days = EnsureDays(orders, log, ref changed);
+
             AssetDatabase.SaveAssets();
 
             changed |= EnsureController(scene, balance, scoring, orders, log);
             changed |= EnsureEconomy(scene, scoring, log);
+            changed |= EnsureDayManager(scene, days, log);
             changed |= BindResultPanel(scoring, log);
 
             if (changed)
@@ -329,19 +332,79 @@ namespace MBG.Catering
                 log.Add("CateringController.scoring diikat ke ScoringConfig.asset.");
             }
 
-            SerializedProperty ordersProp = so.FindProperty("dayOrders");
-            if (ordersProp != null && ordersProp.arraySize == 0)
-            {
-                ordersProp.arraySize = orders.Count;
-                for (int i = 0; i < orders.Count; i++)
-                    ordersProp.GetArrayElementAtIndex(i).objectReferenceValue = orders[i];
+            so.ApplyModifiedProperties();
+            return changed;
+        }
 
+        /// <summary>Tiga hari contoh: 2, 3, lalu 4 pesanan dengan deadline makin ketat.</summary>
+        static List<DayConfigSO> EnsureDays(List<OrderSO> orders, List<string> log, ref bool changed)
+        {
+            OrderSO kecil = orders.Count > 0 ? orders[0] : null;
+            OrderSO sedang = orders.Count > 1 ? orders[1] : null;
+            OrderSO besar = orders.Count > 2 ? orders[2] : null;
+
+            var days = new List<DayConfigSO>
+            {
+                EnsureDay("Day_01", 1, new[] { kecil, sedang }, 3f, 1f, log, ref changed),
+                EnsureDay("Day_02", 2, new[] { kecil, sedang, besar }, 3f, 0.95f, log, ref changed),
+                EnsureDay("Day_03", 3, new[] { sedang, besar, sedang, besar }, 2.5f, 0.9f, log, ref changed),
+            };
+
+            return days;
+        }
+
+        static DayConfigSO EnsureDay(string assetName, int dayNumber, OrderSO[] dayOrders,
+                                     float timeBetweenOrders, float deadlineMultiplier,
+                                     List<string> log, ref bool changed)
+        {
+            var day = LoadOrCreate<DayConfigSO>(assetName, out bool created);
+            if (!created) return day;
+
+            day.dayNumber = dayNumber;
+            day.orders = new List<OrderSO>(dayOrders);
+            day.timeBetweenOrders = timeBetweenOrders;
+            day.orderDeadlineMultiplier = deadlineMultiplier;
+
+            // Jadwal gangguan sengaja dibiarkan kosong — sistemnya belum ada.
+            day.obstacleSchedule = new List<ObstacleScheduleEntry>();
+
+            EditorUtility.SetDirty(day);
+
+            changed = true;
+            log.Add($"{assetName} dibuat ({dayOrders.Length} pesanan, jeda {timeBetweenOrders}s, " +
+                    $"pengali deadline {deadlineMultiplier:0.##}).");
+            return day;
+        }
+
+        static bool EnsureDayManager(Scene scene, List<DayConfigSO> days, List<string> log)
+        {
+            GameObject systems = FindRoot(scene, SystemsName);
+            if (systems == null) return false;
+
+            bool changed = false;
+
+            var manager = systems.GetComponent<MBG.World.DayManager>();
+            if (manager == null)
+            {
+                manager = Undo.AddComponent<MBG.World.DayManager>(systems);
                 changed = true;
-                log.Add($"CateringController.dayOrders diisi {orders.Count} pesanan " +
-                        "(antrian satu hari, dikerjakan berurutan).");
+                log.Add($"DayManager ditambahkan ke '{SystemsName}'.");
             }
 
-            so.ApplyModifiedProperties();
+            var so = new SerializedObject(manager);
+            SerializedProperty daysProp = so.FindProperty("days");
+
+            if (daysProp != null && daysProp.arraySize == 0)
+            {
+                daysProp.arraySize = days.Count;
+                for (int i = 0; i < days.Count; i++)
+                    daysProp.GetArrayElementAtIndex(i).objectReferenceValue = days[i];
+
+                so.ApplyModifiedProperties();
+                changed = true;
+                log.Add($"DayManager.days diisi {days.Count} hari (F3 memulai dari hari pertama).");
+            }
+
             return changed;
         }
 

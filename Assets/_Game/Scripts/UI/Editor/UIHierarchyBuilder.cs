@@ -53,6 +53,8 @@ namespace MBG.UI
             new PanelSpec("DaySummaryPanel", typeof(DaySummaryPanel), false, true),
             new PanelSpec("PausePanel", typeof(PausePanel), false, true),
             new PanelSpec("GameOverPanel", typeof(GameOverPanel), false, true),
+            new PanelSpec("MainMenuPanel", typeof(MainMenuPanel), false, true),
+            new PanelSpec("HowToPlayPanel", typeof(HowToPlayPanel), false, true),
         };
 
         [MenuItem(MenuPath, false, 101)]
