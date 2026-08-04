@@ -1,12 +1,13 @@
+using MBG.Core;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 /// <summary>
 /// Player movement with two modes, switched per area by <see cref="AreaManager"/>:
 ///   - TopDown  (Stardew style): 8-directional WASD, no gravity, no jump.
 ///   - SideView (side-scroller): A/D only, gravity pulls the player onto the floor.
 /// Both share the same acceleration model; only the axes they drive differ.
-/// Uses the new Input System (legacy Input is disabled in this project).
+/// Input comes from <see cref="InputService"/> — never from Keyboard.current or
+/// the legacy Input class directly.
 ///
 /// Controls: WASD (or A/D in side view) = move, Shift = sprint.
 /// </summary>
@@ -85,12 +86,10 @@ public class PlayerController2D : MonoBehaviour
     {
         if (_frozen) { _input = Vector2.zero; return; }
 
-        var kb = Keyboard.current;
-        if (kb == null) { _input = Vector2.zero; return; }
-
-        float x = 0f;
-        if (kb.aKey.isPressed) x -= 1f;
-        if (kb.dKey.isPressed) x += 1f;
+        // Raw WASD, unnormalized: the diagonal handling below is deliberate and
+        // stays here rather than moving into the service.
+        Vector2 move = InputService.MoveAxis;
+        float x = move.x;
 
         if (mode == MoveMode.SideView)
         {
@@ -100,15 +99,11 @@ public class PlayerController2D : MonoBehaviour
         }
         else
         {
-            float y = 0f;
-            if (kb.sKey.isPressed) y -= 1f;
-            if (kb.wKey.isPressed) y += 1f;
-
-            _input = new Vector2(x, y);
+            _input = move;
             if (_input.sqrMagnitude > 1f) _input = _input.normalized; // normalize diagonals
         }
 
-        _sprint = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
+        _sprint = InputService.SprintHeld;
 
         if (_input.sqrMagnitude > 0.01f)
         {

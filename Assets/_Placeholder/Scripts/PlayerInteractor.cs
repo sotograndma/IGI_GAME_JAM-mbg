@@ -1,6 +1,6 @@
 using System.Collections.Generic;
+using MBG.Core;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 /// <summary>
 /// Lives on the player. Interactables register themselves while the player is in
@@ -33,8 +33,7 @@ public class PlayerInteractor : MonoBehaviour
         {
             if (InteractionPromptUI.Instance != null) InteractionPromptUI.Instance.Show(nearest.Prompt);
 
-            var kb = Keyboard.current;
-            if (kb != null && kb.fKey.wasPressedThisFrame)
+            if (InputService.InteractPressed)
                 nearest.Interact(this);
         }
         else if (InteractionPromptUI.Instance != null)
