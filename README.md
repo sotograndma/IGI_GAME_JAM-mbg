@@ -16,9 +16,11 @@ Aturan kerja untuk kontributor (manusia maupun AI) ada di [CLAUDE.md](CLAUDE.md)
 4. Jalankan menu **Tools > MBG > Build UI Hierarchy**. Tool ini melengkapi `UICanvas` yang sudah ada
    dengan `UIManager`, enam panel, dan asset `UIStyle` — serta menukar Label prompt dari legacy
    `Text` ke `TextMeshProUGUI`.
-5. Simpan scene (Ctrl+S).
+5. Jalankan menu **Tools > MBG > Build Kitchen Stations**. Tool ini membuat `KitchenLayout.asset`,
+   prefab `Station_Generic`, dan menata empat station di bawah `InteriorRoot/Stations`.
+6. Simpan scene (Ctrl+S).
 
-Kedua tool di atas aman dijalankan berkali-kali (idempoten), mendukung Undo, dan menolak jalan
+Semua tool di atas aman dijalankan berkali-kali (idempoten), mendukung Undo, dan menolak jalan
 saat Play mode.
 
 > Jangan pernah menjalankan `Tools > Placeholder > Rebuild Scene` — menu itu destruktif
@@ -44,6 +46,9 @@ ada sistem yang boleh memanggil `Keyboard.current` langsung.
 | `F1` | Cetak ringkasan state ke Console: `GameState`, `IsGameplayActive`, multiplier & status pause `GameClock`, `TextInputMode`, `MoveAxis`, musik aktif |
 | `F2`–`F12` | Belum dipakai — disediakan untuk sistem berikutnya (order, QTE, obstacle) |
 
+Untuk menguji prompt **"Belum saatnya"** tanpa sistem pesanan: centang **Debug Force Irrelevant**
+di Inspector station mana pun.
+
 Debug key dibaca oleh `GameBootstrap` dan bisa dimatikan lewat checkbox **Enable Debug Keys**
 di Inspector `__Systems`.
 
@@ -61,6 +66,30 @@ di Inspector `__Systems`.
 | `CoreTypes.cs` | Placeholder `OrderRuntime`, `OrderResult`, `QTEGrade`, `ObstacleType`, `GameOverReason` |
 
 **Semua sistem gameplay baru wajib memakai `GameClock.DeltaTime`, bukan `Time.deltaTime`.**
+
+## Lapisan Kitchen (`Assets/_Game/Scripts/Kitchen/`, namespace `MBG.Kitchen`)
+
+| File | Isi |
+| --- | --- |
+| `StationType.cs` | `enum { Prep, Cooking, Packing, Handover }` + prompt & nama bawaan bahasa Indonesia |
+| `KitchenStation.cs` | `IInteractable` + `IInteractableFocus`. Prompt dinamis, highlight saat jadi target terdekat |
+| `KitchenLayoutSO.cs` | Semua angka penataan dapur — asset di `Assets/_Game/Data/KitchenLayout.asset` |
+
+Layout dapur (offset X dari pusat ruangan `x = 1000`, sisi bawah menempel di `y = -2.81`):
+
+| Station | Offset X | Rentang | Catatan |
+| --- | --- | --- | --- |
+| Cooking | −4.8 | [−5.6, −4.0] | |
+| Prep | −2.6 | [−3.4, −1.8] | |
+| *(pintu)* | *+0.145* | *[−0.44, +0.73]* | tidak disentuh tool |
+| Packing | +2.6 | [+1.8, +3.4] | |
+| Handover | +4.8 | [+4.0, +5.6] | |
+
+Ruangan lebar 12.5 unit → batas [−6.25, +6.25]. `KitchenLayoutSO.Validate()` memperingatkan
+kalau ada station yang keluar ruangan, menabrak zona pintu, atau saling tumpang tindih.
+
+Relevansi station diisi dari luar lewat `KitchenStation.RelevanceCheck` — station tidak boleh
+tahu apa pun tentang sistem pesanan. Selama belum diisi, semua station relevan.
 
 ## Lapisan UI (`Assets/_Game/Scripts/UI/`, namespace `MBG.UI`)
 

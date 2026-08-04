@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1de3ccb36d6ba7343b219c57cb70e430, type: 3}
+  m_Name: KitchenLayout
+  m_EditorClassIdentifier: Assembly-CSharp::MBG.Kitchen.KitchenLayoutSO
+  roomCenterX: 1000
+  floorSurfaceY: -2.81
+  roomWidth: 12.5
+  doorOffsetX: 0.145
+  doorClearance: 1.35
+  interactionPadding: 0.45
+  highlightColor: {r: 1, g: 1, b: 1, a: 1}
+  highlightAlpha: 0.85
+  highlightFadeSpeed: 12
+  highlightPadding: 0.14
+  labelFontSize: 1.1
+  labelOffsetY: 0.35
+  stations:
+  - type: 1
+    offsetX: -4.8
+    width: 1.6
+    height: 1.4
+    color: {r: 0.85, g: 0.36, b: 0.25, a: 1}
+    promptOverride: 
+    labelOverride: 
+  - type: 0
+    offsetX: -2.6
+    width: 1.6
+    height: 1.4
+    color: {r: 0.38, g: 0.7, b: 0.42, a: 1}
+    promptOverride: 
+    labelOverride: 
+  - type: 2
+    offsetX: 2.6
+    width: 1.6
+    height: 1.4
+    color: {r: 0.36, g: 0.56, b: 0.85, a: 1}
+    promptOverride: 
+    labelOverride: 
+  - type: 3
+    offsetX: 4.8
+    width: 1.6
+    height: 1.4
+    color: {r: 0.9, g: 0.75, b: 0.32, a: 1}
+    promptOverride: 
+    labelOverride: 

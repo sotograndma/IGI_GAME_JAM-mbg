@@ -1,4 +1,5 @@
 using System;
+using MBG.Kitchen;
 using UnityEngine;
 
 namespace MBG.Core
@@ -24,6 +25,13 @@ namespace MBG.Core
         public static event Action<int, int> OnOrderProgress;
         public static event Action<OrderResult> OnOrderCompleted;
         public static event Action<OrderRuntime> OnOrderFailed;
+
+        // ---- Kitchen ----------------------------------------------------
+        // Catatan: ini satu-satunya tempat MBG.Core menyebut tipe dari MBG.Kitchen.
+        // Aman selama semuanya masih di assembly Assembly-CSharp. TODO: kalau nanti
+        // dibuat asmdef per-namespace, pindahkan StationType ke MBG.Core agar arah
+        // dependensinya tidak terbalik.
+        public static event Action<StationType> OnStationUsed;
 
         // ---- QTE --------------------------------------------------------
         public static event Action<QTEGrade> OnQTEResult;
@@ -60,6 +68,9 @@ namespace MBG.Core
 
         public static void RaiseOrderFailed(OrderRuntime order)
             => OnOrderFailed?.Invoke(order);
+
+        public static void RaiseStationUsed(StationType type)
+            => OnStationUsed?.Invoke(type);
 
         public static void RaiseQTEResult(QTEGrade grade)
             => OnQTEResult?.Invoke(grade);
@@ -101,6 +112,8 @@ namespace MBG.Core
             OnOrderProgress = null;
             OnOrderCompleted = null;
             OnOrderFailed = null;
+
+            OnStationUsed = null;
 
             OnQTEResult = null;
 
