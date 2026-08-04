@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 76cda468120a8ba4fa429059ed1f142c, type: 3}
+  m_Name: SantetConfig
+  m_EditorClassIdentifier: Assembly-CSharp::MBG.Data.SantetConfigSO
+  patternEasy: {fileID: 11400000, guid: fe37887bcd5ad0645a185b767309b6bb, type: 2}
+  patternNormal: {fileID: 11400000, guid: 3511af3e4d808644e9971a92c5315a59, type: 2}
+  patternHard: {fileID: 11400000, guid: d3671df9e31eb20469dd95a57fdec0dc, type: 2}
+  accuracyThreshold: 0.6
+  perfectWindow: 0.09
+  goodWindow: 0.2
+  missWindow: 0.28
+  perfectValue: 1
+  goodValue: 0.7
+  missValue: 0
+  overlayColor: {r: 0.62, g: 0.05, b: 0.08, a: 0.42}
+  vignetteColor: {r: 0.18, g: 0, b: 0.02, a: 0.9}
+  desaturateColor: {r: 0.35, g: 0.33, b: 0.36, a: 0.3}
+  overlayFadeDuration: 0.45
+  overlayPulseSpeed: 3.2
+  overlayPulseAmount: 0.22
+  musicDuckVolume: 0.25
+  failGoldPenalty: 150
+  failReputationPenalty: 1
+  failBatchesLost: 1
+  objectiveText: Cari dukun di luar
+  dukunPrompt: Hentikan santetnya
+  phase2TimeMultiplier: 0.5
+  dukunWidth: 0.9
+  dukunHeight: 1.8
+  dukunColor: {r: 0.42, g: 0.18, b: 0.52, a: 1}
+  dukunTriggerSize: {x: 3.4, y: 3}
+  confrontationConfig: {fileID: 11400000, guid: 57ad607073386944bb8ec41f06503fd5, type: 2}
+  confrontationLabel: Patahkan santetnya!
+  winReputationGain: 1
+  confrontationFailGoldPenalty: 100

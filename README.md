@@ -33,7 +33,9 @@ Aturan kerja untuk kontributor (manusia maupun AI) ada di [CLAUDE.md](CLAUDE.md)
     peringatan di `Door_Interior`, dan indikator gangguan di HUD.
 13. Jalankan menu **Tools > MBG > Build Exterior Encounters**. Tool ini membuat titik encounter di
     luar rumah dan memasang sisi runtime gangguan Ormas.
-14. Simpan scene (Ctrl+S).
+14. Jalankan menu **Tools > MBG > Build Santet Setup**. Tool ini membuat sprite lingkaran &
+    vignette, tiga pola ritme, overlay layar, penunjuk objektif, dan area not di panel QTE.
+15. Simpan scene (Ctrl+S).
 
 Semua tool di atas aman dijalankan berkali-kali (idempoten), mendukung Undo, dan menolak jalan
 saat Play mode.
@@ -167,7 +169,10 @@ Aturan catering:
 | `IObstacle.cs` | Kontrak gangguan: `Begin`, `Tick`, `Resolve`, `UrgencyNormalized`, `OnResolved` |
 | `ObstacleManager.cs` | Jadwal harian, satu gangguan aktif, pelambatan waktu, perpindahan state |
 | `DoorAlertSystem.cs` | Peringatan di pintu: getaran, ikon, onomatope, guncangan layar |
-| `Modules/TimedObstacleStub.cs` | Stub Santet / Pajak Ilegal (urgency naik seiring waktu) |
+| `Modules/TimedObstacleStub.cs` | Stub Pajak Ilegal (urgency naik seiring waktu) |
+| `Santet/SantetObstacle.cs` | Serangan ritme di dapur, lalu perburuan dukun di luar |
+| `Santet/SantetPresenter.cs` | Overlay layar, penunjuk objektif, dan dukun placeholder |
+| `Santet/DukunNPC.cs` | Target interaksi "[F] Hentikan santetnya" |
 | `Ormas/OrmasObstacle.cs` | Gangguan Ormas lengkap: Intrusion Meter + encounter |
 | `Ormas/OrmasEncounterController.cs` | Memunculkan grup di luar rumah dan penerobos di dapur |
 | `Ormas/OrmasGroup.cs` | Target interaksi "[F] Hadapi mereka" |
@@ -192,6 +197,30 @@ Gedoran mulai  →  Intrusion Meter mengisi (default 22s)
   15 detik, bukan 30.
 - Kalah tidak pernah membuat pemain terjebak: ormas selalu pergi.
 - Semua angkanya di `OrmasConfigSO`, termasuk daftar kalimat provokasi.
+
+### Santet
+
+Santet **tidak lewat pintu** — pintunya diam, serangannya langsung mengenai pemain di dapur.
+
+```
+Fase 1 (dapur)  layar memerah + vignette + lapisan kelabu, pemain dibekukan
+                → RhythmQTE (ring luar mengecil ke ring dalam, tekan Spasi/klik)
+                   akurasi ≥ 0.6 → efek hilang, lanjut fase 2
+                   akurasi < 0.6 → -1 batch, -150 gold, -1 reputasi, efek tetap hilang
+Fase 2 (luar)   objektif "Cari dukun di luar" + panah penunjuk di tepi layar
+                → [F] Hentikan santetnya → TimingBarQTE Hard 3 hit
+                   berhasil → +1 reputasi, gangguan selesai
+                   gagal    → -100 gold, dukun tetap pergi
+```
+
+- Gagal di fase mana pun **tidak pernah** langsung mengakhiri permainan; game over hanya lewat
+  reputasi 0.
+- Pola ritme **tidak disinkronkan ke audio track** — murni berbasis waktu, jadi mengganti musik
+  tidak merusak satu pun pola.
+- Efek layar memakai tiga UI Image fullscreen, bukan post-processing volume. Konsekuensinya:
+  saturasi tidak benar-benar diturunkan, hanya ditumpuk lapisan kelabu.
+- `GameClock` dikembalikan ke 1.0 selama QTE (pola berbasis waktu absolut), dan 0.5 selama
+  perburuan dukun.
 
 Pintu bukan dekorasi — ia sistem peringatan:
 
@@ -280,6 +309,7 @@ Kemas ke kotak (`QTE_Easy`), 20 porsi per batch.
 | `QTEController.cs` | Singleton: pilih module, bekukan pemain, atur `GameState`, pancarkan hasil |
 | `Modules/TimingBarQTE.cs` | Skill check ala Dead by Daylight, mendukung multi-hit |
 | `Modules/MashQTE.cs` | Tarik-menarik: tekan Spasi melawan dorongan lawan, dengan kalimat provokasi |
+| `Modules/RhythmQTE.cs` | Ring luar mengecil menuju ring dalam; pola murni berbasis waktu, tanpa sinkronisasi audio |
 
 Cara memanggil QTE dari sistem lain:
 

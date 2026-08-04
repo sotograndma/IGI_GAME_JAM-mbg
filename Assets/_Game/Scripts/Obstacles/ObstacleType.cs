@@ -58,9 +58,8 @@ namespace MBG.Obstacles
         }
 
         /// <summary>
-        /// Cara pintu memperingatkan gangguan ini.
-        /// TODO: santet sebenarnya tidak datang lewat pintu — untuk sekarang ia
-        /// memakai ketukan supaya stub-nya bisa diuji.
+        /// Cara pintu memperingatkan gangguan ini. Santet menyerang langsung di
+        /// dapur, jadi pintunya memang diam.
         /// </summary>
         public static DoorAlertState GetDoorAlert(this ObstacleType type)
         {
@@ -68,7 +67,7 @@ namespace MBG.Obstacles
             {
                 case ObstacleType.Ormas: return DoorAlertState.Bang;
                 case ObstacleType.IllegalTax: return DoorAlertState.Knock;
-                default: return DoorAlertState.Knock;
+                default: return DoorAlertState.Idle;
             }
         }
 

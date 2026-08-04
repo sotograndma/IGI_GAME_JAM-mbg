@@ -66,7 +66,7 @@ namespace MBG.QTE
 
             RegisterModule(new TimingBarQTE());
             RegisterModule(new MashQTE());
-            // TODO: RhythmQTE (santet) menyusul — cukup daftarkan di sini.
+            RegisterModule(new RhythmQTE());
         }
 
         void OnDestroy()

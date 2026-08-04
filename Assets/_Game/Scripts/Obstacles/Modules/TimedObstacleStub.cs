@@ -73,15 +73,7 @@ namespace MBG.Obstacles
         }
     }
 
-    // Ormas sudah punya implementasi penuh di Ormas/OrmasObstacle.cs.
-
-    /// <summary>STUB Santet: serangan gaib.</summary>
-    public class SantetObstacle : TimedObstacleStub
-    {
-        public SantetObstacle(ObstacleConfigSO config) : base(config) { }
-
-        public override ObstacleType Type => ObstacleType.Santet;
-    }
+    // Ormas dan Santet sudah punya implementasi penuh di Ormas/ dan Santet/.
 
     /// <summary>STUB Pajak Ilegal: ketukan sopan yang menagih.</summary>
     public class IllegalTaxObstacle : TimedObstacleStub

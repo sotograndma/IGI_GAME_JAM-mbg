@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using UnityEngine;
 
 namespace MBG.QTE
 {
@@ -66,5 +68,30 @@ namespace MBG.QTE
 
         /// <summary>Kalimat provokasi lawan yang sedang tampil.</summary>
         string CurrentTaunt { get; }
+    }
+
+    /// <summary>Satu not ritme yang sedang terlihat di layar.</summary>
+    public struct RhythmNoteView
+    {
+        /// <summary>Posisi di dalam area ritme, 0..1 tiap sumbu.</summary>
+        public Vector2 position01;
+
+        /// <summary>
+        /// 1 = ring luar baru muncul (paling besar), 0 = ring luar bertemu ring
+        /// dalam (saat yang tepat untuk menekan). Negatif berarti sudah lewat.
+        /// </summary>
+        public float approach01;
+    }
+
+    /// <summary>Data untuk menggambar mekanik ritme.</summary>
+    public interface IRhythmReadout
+    {
+        IReadOnlyList<RhythmNoteView> ActiveNotes { get; }
+
+        /// <summary>Rata-rata akurasi sejauh ini, 0..1.</summary>
+        float Accuracy01 { get; }
+
+        int NotesJudged { get; }
+        int TotalNotes { get; }
     }
 }

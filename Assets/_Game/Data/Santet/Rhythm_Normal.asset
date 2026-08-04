@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 35ac57650a310744fbd10de288ece400, type: 3}
+  m_Name: Rhythm_Normal
+  m_EditorClassIdentifier: Assembly-CSharp::MBG.Data.RhythmPatternSO
+  displayName: Rhythm_Normal
+  notes:
+  - time: 1.25
+    normalizedPosition: {x: 0.32, y: 0.43}
+    approachDuration: 0.85
+  - time: 2.25
+    normalizedPosition: {x: 0.702, y: 0.42799997}
+    approachDuration: 0.85
+  - time: 3.25
+    normalizedPosition: {x: 0.36399996, y: 0.42599994}
+    approachDuration: 0.85
+  - time: 4.25
+    normalizedPosition: {x: 0.74599993, y: 0.42399985}
+    approachDuration: 0.85
+  - time: 5.25
+    normalizedPosition: {x: 0.40799987, y: 0.42199987}
+    approachDuration: 0.85
+  - time: 6.25
+    normalizedPosition: {x: 0.78999984, y: 0.4199999}
+    approachDuration: 0.85
+  - time: 7.25
+    normalizedPosition: {x: 0.45200002, y: 0.41799968}
+    approachDuration: 0.85
+  - time: 8.25
+    normalizedPosition: {x: 0.834, y: 0.41599995}
+    approachDuration: 0.85
+  - time: 9.25
+    normalizedPosition: {x: 0.49599993, y: 0.4139995}
+    approachDuration: 0.85
+  - time: 10.25
+    normalizedPosition: {x: 0.15799989, y: 0.41199952}
+    approachDuration: 0.85

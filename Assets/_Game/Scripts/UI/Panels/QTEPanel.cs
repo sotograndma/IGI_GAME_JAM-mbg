@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using MBG.Core;
 using MBG.QTE;
 using TMPro;
@@ -27,9 +28,22 @@ namespace MBG.UI
         [SerializeField] RectTransform perfectZone;
         [SerializeField] RectTransform cursor;
 
+        [Header("Ritme (diisi Tools > MBG > Build Santet Setup)")]
+        [Tooltip("Batang bar timing/mash — disembunyikan selama mekanik ritme. " +
+                 "Label instruksi sengaja TIDAK ikut disembunyikan.")]
+        [SerializeField] RectTransform barFrame;
+
+        [SerializeField] RectTransform rhythmArea;
+        [SerializeField] RectTransform noteTemplate;
+
+        [Tooltip("Seberapa besar ring luar saat baru muncul, relatif ring dalam.")]
+        [SerializeField] float noteMaxScale = 3.4f;
+
         const float FeedbackFadeTail = 0.25f;
 
         float _feedbackTimer;
+
+        readonly List<RectTransform> _notePool = new();
 
         protected override void OnShow()
         {
@@ -49,17 +63,24 @@ namespace MBG.UI
         void Update()
         {
             QTEController controller = QTEController.Instance;
-            if (controller != null)
+            IQTEModule module = controller != null ? controller.ActiveModule : null;
+
+            bool rhythm = module is IRhythmReadout;
+            SetActive(barFrame, !rhythm);
+            SetActive(rhythmArea, rhythm);
+
+            if (module is ITimingBarReadout bar)
             {
-                if (controller.ActiveModule is ITimingBarReadout bar)
-                {
-                    UpdateBar(bar);
-                    RefreshInstruction();
-                }
-                else if (controller.ActiveModule is ITugOfWarReadout tug)
-                {
-                    UpdateTugOfWar(tug);
-                }
+                UpdateBar(bar);
+                RefreshInstruction();
+            }
+            else if (module is ITugOfWarReadout tug)
+            {
+                UpdateTugOfWar(tug);
+            }
+            else if (module is IRhythmReadout notes)
+            {
+                UpdateRhythm(notes);
             }
 
             TickFeedback();
@@ -105,6 +126,66 @@ namespace MBG.UI
             string text = $"{taunt}TEKAN SPASI TERUS!";
 
             if (instructionLabel.text != text) instructionLabel.text = text;
+        }
+
+        /// <summary>
+        /// Gambar not ritme: ring dalam diam, ring luar mengecil menuju ring dalam.
+        /// Not dipakai ulang dari pool supaya tidak ada alokasi tiap frame.
+        /// </summary>
+        void UpdateRhythm(IRhythmReadout readout)
+        {
+            if (rhythmArea == null || noteTemplate == null) return;
+
+            IReadOnlyList<RhythmNoteView> views = readout.ActiveNotes;
+            EnsureNotePool(views.Count);
+
+            for (int i = 0; i < _notePool.Count; i++)
+            {
+                RectTransform note = _notePool[i];
+
+                if (i >= views.Count)
+                {
+                    if (note.gameObject.activeSelf) note.gameObject.SetActive(false);
+                    continue;
+                }
+
+                RhythmNoteView view = views[i];
+
+                if (!note.gameObject.activeSelf) note.gameObject.SetActive(true);
+
+                note.anchorMin = view.position01;
+                note.anchorMax = view.position01;
+                note.anchoredPosition = Vector2.zero;
+
+                Transform outer = note.childCount > 0 ? note.GetChild(0) : null;
+                if (outer == null) continue;
+
+                // approach01: 1 = baru muncul, 0 = saatnya ditekan. Nilai negatif
+                // berarti sudah lewat sedikit, ring menyusut di bawah ring dalam.
+                float scale = Mathf.Lerp(1f, noteMaxScale, Mathf.Max(0f, view.approach01));
+                outer.localScale = new Vector3(scale, scale, 1f);
+            }
+
+            if (instructionLabel == null) return;
+
+            string text = $"Tahan santetnya! ({readout.NotesJudged}/{readout.TotalNotes})";
+            if (instructionLabel.text != text) instructionLabel.text = text;
+        }
+
+        void EnsureNotePool(int count)
+        {
+            while (_notePool.Count < count)
+            {
+                RectTransform note = Instantiate(noteTemplate, rhythmArea);
+                note.gameObject.SetActive(false);
+                note.name = $"Note_{_notePool.Count}";
+                _notePool.Add(note);
+            }
+        }
+
+        static void SetActive(RectTransform rect, bool active)
+        {
+            if (rect != null && rect.gameObject.activeSelf != active) rect.gameObject.SetActive(active);
         }
 
         static void PlaceCursor(RectTransform rect, float position01)

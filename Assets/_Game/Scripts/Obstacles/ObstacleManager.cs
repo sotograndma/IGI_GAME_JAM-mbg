@@ -39,6 +39,9 @@ namespace MBG.Obstacles
         [Tooltip("Angka khusus Ormas. Diikat oleh Tools > MBG > Build Exterior Encounters.")]
         [SerializeField] OrmasConfigSO ormasConfig;
 
+        [Tooltip("Angka khusus Santet. Diikat oleh Tools > MBG > Build Santet Setup.")]
+        [SerializeField] SantetConfigSO santetConfig;
+
         [Header("Referensi")]
         [Tooltip("Peringatan di Door_Interior. Diikat oleh Tools > MBG > Build Obstacle Setup.")]
         [SerializeField] DoorAlertSystem doorAlert;
@@ -81,7 +84,7 @@ namespace MBG.Obstacles
             Instance = this;
 
             RegisterModule(new OrmasObstacle(ormasConfig));
-            RegisterModule(new SantetObstacle(Config));
+            RegisterModule(new SantetObstacle(santetConfig));
             RegisterModule(new IllegalTaxObstacle(Config));
         }
 
