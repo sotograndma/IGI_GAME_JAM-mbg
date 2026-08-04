@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using MBG.Core;
 using UnityEngine;
 
@@ -52,6 +53,26 @@ namespace MBG.Kitchen
         /// </summary>
         public static Func<StationType, bool> RelevanceCheck;
 
+        /// <summary>
+        /// Station yang sedang aktif di scene, dikunci per tipe. Dipakai UI untuk
+        /// tahu ke arah mana pemain harus berjalan, tanpa perlu memegang referensi
+        /// ke satu pun station.
+        /// </summary>
+        static readonly Dictionary<StationType, KitchenStation> _registry = new();
+
+        /// <summary>Posisi station bertipe tertentu di world space.</summary>
+        public static bool TryGetPosition(StationType type, out Vector3 position)
+        {
+            if (_registry.TryGetValue(type, out KitchenStation station) && station != null)
+            {
+                position = station.PlayerStandPoint.position;
+                return true;
+            }
+
+            position = Vector3.zero;
+            return false;
+        }
+
         public StationType Type => stationType;
 
         /// <summary>Titik berdiri pemain; fallback ke posisi station sendiri.</summary>
@@ -70,8 +91,13 @@ namespace MBG.Kitchen
 
         void Awake() => ApplyHighlightAlpha(0f);
 
+        void OnEnable() => _registry[stationType] = this;
+
         void OnDisable()
         {
+            if (_registry.TryGetValue(stationType, out KitchenStation registered) && registered == this)
+                _registry.Remove(stationType);
+
             // Area interior dimatikan lewat SetActive; jangan tinggalkan highlight
             // menyala saat pemain kembali nanti.
             _focused = false;
@@ -140,6 +166,10 @@ namespace MBG.Kitchen
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetOnPlay() => RelevanceCheck = null;
+        static void ResetOnPlay()
+        {
+            RelevanceCheck = null;
+            _registry.Clear();
+        }
     }
 }

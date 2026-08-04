@@ -61,8 +61,7 @@ namespace MBG.UI
         }
 
         /// <summary>
-        /// Pemetaan GameState ke panel. Sengaja baru menangani InQTE — panel lain
-        /// masih kerangka kosong, jadi memunculkannya belum ada gunanya.
+        /// Pemetaan GameState ke panel.
         /// TODO: Paused -> PausePanel, GameOver -> GameOverPanel,
         /// DaySummary -> DaySummaryPanel begitu isinya ada.
         /// </summary>
@@ -70,6 +69,12 @@ namespace MBG.UI
         {
             if (next == GameState.InQTE) ShowPanel<QTEPanel>();
             else if (previous == GameState.InQTE) HidePanel<QTEPanel>();
+
+            // HUD hanya untuk state bermain. InObstacle sengaja TIDAK termasuk —
+            // begitu indikator gangguan diisi, state itu mungkin perlu ditambahkan.
+            bool hudVisible = next == GameState.Playing || next == GameState.InQTE;
+            if (hudVisible) ShowPanel<HUDPanel>();
+            else HidePanel<HUDPanel>();
         }
 
         /// <summary>

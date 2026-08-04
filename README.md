@@ -22,7 +22,9 @@ Aturan kerja untuk kontributor (manusia maupun AI) ada di [CLAUDE.md](CLAUDE.md)
    memasang `QTEController` di `__Systems`, dan mengisi `QTEPanel` dengan bar, zona, dan indikator.
 7. Jalankan menu **Tools > MBG > Build Catering Data**. Tool ini membuat resep, pemesan, tiga
    pesanan contoh, dan memasang `CateringController` di `__Systems`.
-8. Simpan scene (Ctrl+S).
+8. Jalankan menu **Tools > MBG > Build HUD**. Tool ini mengisi `HUDPanel` dengan kartu pesanan,
+   uang & skor, timer, petunjuk langkah, dan slot gangguan.
+9. Simpan scene (Ctrl+S).
 
 Semua tool di atas aman dijalankan berkali-kali (idempoten), mendukung Undo, dan menolak jalan
 saat Play mode.
@@ -200,9 +202,27 @@ Aturan QTE:
 | File | Isi |
 | --- | --- |
 | `UIPanel.cs` | Base class abstract. `Show()`, `Hide()`, `IsVisible`, fade lewat `CanvasGroup` |
-| `UIManager.cs` | Singleton pendaftar panel. `ShowPanel<T>()`, `HidePanel<T>()`, `HideAll()`, `HideAllExcept<T>()` |
+| `UIManager.cs` | Singleton pendaftar panel + pemetaan `GameState` → panel |
 | `UIStyle.cs` | ScriptableObject tema — asset-nya di `Assets/_Game/Data/UIStyle.asset` |
-| `Panels/` | `HUDPanel`, `QTEPanel`, `ResultPanel`, `DaySummaryPanel`, `PausePanel`, `GameOverPanel` (masih kerangka) |
+| `Panels/HUDPanel.cs` | HUD gameplay lengkap (lihat di bawah) |
+| `Panels/QTEPanel.cs` | Bar timing QTE |
+| `Panels/` lainnya | `ResultPanel`, `DaySummaryPanel`, `PausePanel`, `GameOverPanel` (masih kerangka) |
+
+### HUD
+
+| Posisi | Isi |
+| --- | --- |
+| Kiri atas | Kartu pesanan: nama penerima, nama makanan, progress bar + "60 / 100 porsi", bar kualitas rata-rata |
+| Kanan atas | Uang (`Rp`) dan skor |
+| Tengah atas | Timer `MM:SS` — merah dan berdenyut saat sisa waktu di bawah `timerWarningThreshold` (default 25%) |
+| Bawah tengah | "Berikutnya: Potong sayur di meja persiapan" dengan panah `<` / `>` ke arah station tujuan |
+| Kanan bawah | `ObstacleSlot` — masih kosong, diakses lewat `HUDPanel.ObstacleSlot` |
+
+- HUD hanya tampil saat `GameState.Playing` atau `InQTE`; `UIManager` yang mengaturnya.
+- Semua datanya masuk lewat `GameEventBus`. HUD **tidak** punya referensi ke `CateringController`.
+- Progress bar dan bar kualitas dianimasikan `MoveTowards`, bukan snap.
+- Saat porsi bertambah, muncul teks melayang "+20 porsi".
+- Arah panah dihitung dari registry posisi di `KitchenStation.TryGetPosition()`.
 
 Aturan UI:
 

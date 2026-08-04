@@ -27,6 +27,22 @@ namespace MBG.Kitchen
             }
         }
 
+        /// <summary>
+        /// Sebutan tempat untuk dipakai di dalam kalimat, misal
+        /// "Berikutnya: Potong sayur di <b>meja persiapan</b>".
+        /// </summary>
+        public static string GetLocationPhrase(this StationType type)
+        {
+            switch (type)
+            {
+                case StationType.Prep: return "meja persiapan";
+                case StationType.Cooking: return "kompor";
+                case StationType.Packing: return "meja pengemasan";
+                case StationType.Handover: return "meja serah terima";
+                default: return "station";
+            }
+        }
+
         /// <summary>Nama yang tampil di label placeholder di atas station.</summary>
         public static string GetDisplayName(this StationType type)
         {

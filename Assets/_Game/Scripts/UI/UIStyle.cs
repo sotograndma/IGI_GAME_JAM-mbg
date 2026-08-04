@@ -1,3 +1,4 @@
+using MBG.Catering;
 using MBG.QTE;
 using TMPro;
 using UnityEngine;
@@ -45,6 +46,26 @@ namespace MBG.UI
         [Tooltip("Berapa lama teks hasil QTE (PERFECT / BAGUS / ...) bertahan sebelum memudar.")]
         public float qteFeedbackDuration = 0.5f;
 
+        [Header("HUD")]
+        [Tooltip("Kecepatan lerp progress bar. Makin besar makin cepat menyusul angka sebenarnya.")]
+        public float hudBarLerpSpeed = 5f;
+
+        [Tooltip("Sisa waktu (fraksi deadline) yang membuat timer berubah merah dan berdenyut.")]
+        [Range(0f, 1f)]
+        public float timerWarningThreshold = 0.25f;
+
+        [Tooltip("Kecepatan denyut timer saat waktu menipis.")]
+        public float timerPulseSpeed = 7f;
+
+        [Tooltip("Seberapa besar timer membesar saat berdenyut, sebagai fraksi.")]
+        public float timerPulseAmount = 0.09f;
+
+        [Tooltip("Berapa lama teks \"+20 porsi\" melayang sebelum hilang.")]
+        public float floatingTextDuration = 1.1f;
+
+        [Tooltip("Seberapa jauh teks melayang naik, dalam piksel canvas.")]
+        public float floatingTextRise = 55f;
+
         /// <summary>
         /// Warna untuk sebuah nilai QTE. Teksnya sendiri diambil dari
         /// <c>QTEGradeExtensions.GetLabel()</c>, bukan dari sini.
@@ -56,6 +77,18 @@ namespace MBG.UI
                 case QTEGrade.Perfect: return perfectColor;
                 case QTEGrade.Good: return goodColor;
                 case QTEGrade.Miss: return missColor;
+                default: return dangerColor;
+            }
+        }
+
+        /// <summary>Warna untuk tingkat kualitas makanan di HUD.</summary>
+        public Color GetQualityColor(FoodQuality quality)
+        {
+            switch (quality)
+            {
+                case FoodQuality.Perfect: return perfectColor;
+                case FoodQuality.Good: return goodColor;
+                case FoodQuality.Bad: return missColor;
                 default: return dangerColor;
             }
         }
