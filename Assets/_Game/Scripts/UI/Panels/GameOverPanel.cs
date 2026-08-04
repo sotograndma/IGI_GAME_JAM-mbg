@@ -1,5 +1,6 @@
 using System.Text;
 using MBG.Core;
+using MBG.Data;
 using MBG.World;
 using TMPro;
 using UnityEngine;
@@ -80,8 +81,16 @@ namespace MBG.UI
             bool newRecord = HighScoreStore.TrySubmit(score);
             int highScore = HighScoreStore.Get();
 
+            ReputationService reputation = ReputationService.Instance;
+
             var sb = new StringBuilder();
             sb.Append($"Hari bertahan: {(days != null ? days.CurrentDayNumber : 1)}\n");
+            sb.Append($"Hari terjauh: {HighScoreStore.GetBestDay()}\n");
+
+            if (reputation != null)
+                sb.Append($"Reputasi akhir: {reputation.Reputation}/{reputation.MaxReputation} " +
+                          $"({reputation.Tier.GetLabel()})\n");
+
             sb.Append($"Total gold: {(economy != null ? economy.Gold : 0):n0}\n");
             sb.Append($"Total skor: {score:n0}\n");
             sb.Append($"Rekor skor: {highScore:n0}");

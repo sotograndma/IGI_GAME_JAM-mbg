@@ -58,6 +58,9 @@ namespace MBG.Catering
 
         Func<StationType, bool> _relevanceCheck;
 
+        /// <summary>Preset QTE dari hari berjalan; menimpa preset milik langkah resep.</summary>
+        QTEConfigSO _qteOverride;
+
         void Awake()
         {
             if (Instance != null && Instance != this)
@@ -108,7 +111,8 @@ namespace MBG.Catering
         /// Antrian dan pergantian pesanan diurus <c>DayManager</c>, bukan di sini —
         /// controller ini hanya tahu satu pesanan yang sedang dikerjakan.
         /// </summary>
-        public OrderRuntime StartOrder(OrderSO order, float deadlineMultiplier = 1f)
+        public OrderRuntime StartOrder(OrderSO order, float deadlineMultiplier = 1f,
+                                       QTEConfigSO qteOverride = null)
         {
             if (order == null)
             {
@@ -129,6 +133,7 @@ namespace MBG.Catering
             }
 
             ActiveOrder = new OrderRuntime(order, balance, deadlineMultiplier);
+            _qteOverride = qteOverride;
 
             Debug.Log($"[Catering] Pesanan dimulai — {ActiveOrder.Describe()}", this);
             AudioService.PlaySFX(SfxId.OrderIncoming);
@@ -247,7 +252,10 @@ namespace MBG.Catering
 
         void BeginStepQTE(RecipeStepSO step)
         {
-            if (step.qteConfig == null)
+            // Hari yang naik kelas boleh menimpa preset tiap langkah sekaligus.
+            QTEConfigSO config = _qteOverride != null ? _qteOverride : step.qteConfig;
+
+            if (config == null)
             {
                 Debug.LogError($"[Catering] Langkah '{step.actionLabel}' belum punya QTEConfigSO.", step);
                 return;
@@ -261,7 +269,7 @@ namespace MBG.Catering
                 return;
             }
 
-            qte.Begin(new QTERequest(step.qteType, step.qteConfig, step.actionLabel, HandleStepQTEFinished));
+            qte.Begin(new QTERequest(step.qteType, config, step.actionLabel, HandleStepQTEFinished));
         }
 
         void HandleStepQTEFinished(QTEResult result)
@@ -320,7 +328,8 @@ namespace MBG.Catering
             order.state = OrderState.Completed;
 
             // Rumusnya hanya ada di ScoringConfigSO; controller cuma memakainya.
-            OrderResult result = Scoring.CalculateResult(order, success: true);
+            OrderResult result = Scoring.CalculateResult(order, success: true,
+                                                        ReputationService.CurrentGoldMultiplier);
 
             Debug.Log($"[Catering] Pesanan diserahkan — {result}", this);
             AudioService.PlaySFX(SfxId.OrderComplete);

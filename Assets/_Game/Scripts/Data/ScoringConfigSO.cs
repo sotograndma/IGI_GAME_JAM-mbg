@@ -42,33 +42,8 @@ namespace MBG.Data
         [Min(0)]
         public int startingGold = 500;
 
-        [Header("Reputasi")]
-        [Min(1)]
-        public int startingReputation = 3;
-
-        [Min(1)]
-        public int maxReputation = 5;
-
-        [Tooltip("Perubahan reputasi saat pesanan diserahkan dengan kualitas PERFECT.")]
-        public int reputationOnPerfect = 1;
-
-        public int reputationOnGood = 0;
-        public int reputationOnBad = -1;
-
-        [Tooltip("Perubahan reputasi saat pesanan gagal atau kualitasnya GAGAL.")]
-        public int reputationOnFailed = -2;
-
-        /// <summary>Berapa reputasi bertambah/berkurang untuk satu hasil pesanan.</summary>
-        public int GetReputationDelta(FoodQuality quality)
-        {
-            switch (quality)
-            {
-                case FoodQuality.Perfect: return reputationOnPerfect;
-                case FoodQuality.Good: return reputationOnGood;
-                case FoodQuality.Bad: return reputationOnBad;
-                default: return reputationOnFailed;
-            }
-        }
+        // Angka reputasi TIDAK ada di sini — semuanya di ReputationConfigSO, supaya
+        // tidak tersebar di dua asset.
 
         static ScoringConfigSO _fallback;
 
@@ -101,7 +76,13 @@ namespace MBG.Data
         /// Hitung hasil satu pesanan. Fungsi murni — tidak mengubah apa pun, jadi
         /// aman dipanggil beberapa sistem sekaligus dengan hasil identik.
         /// </summary>
-        public OrderResult CalculateResult(OrderRuntime order, bool success)
+        /// <param name="reputationGoldMultiplier">
+        /// Pengali bayaran dari tingkat reputasi. Diteruskan pemanggil supaya fungsi
+        /// ini tetap murni dan hasilnya bisa dihitung ulang siapa pun dengan angka
+        /// yang sama.
+        /// </param>
+        public OrderResult CalculateResult(OrderRuntime order, bool success,
+                                           float reputationGoldMultiplier = 1f)
         {
             var result = new OrderResult();
             if (order == null) return result;
@@ -135,7 +116,8 @@ namespace MBG.Data
             int baseGold = order.source != null ? order.source.baseGoldReward : 0;
             int baseScore = order.source != null ? order.source.baseScoreReward : 0;
 
-            result.goldEarned = Mathf.RoundToInt(baseGold * multiplier) + result.timeBonusGold;
+            float reputationScale = Mathf.Max(0f, reputationGoldMultiplier);
+            result.goldEarned = Mathf.RoundToInt((baseGold * multiplier + result.timeBonusGold) * reputationScale);
             result.scoreEarned = Mathf.RoundToInt(baseScore * multiplier) + result.perfectCount * perfectBonus;
 
             return result;

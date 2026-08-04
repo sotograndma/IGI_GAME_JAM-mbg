@@ -30,7 +30,6 @@ namespace MBG.Data
         public int batchesDestroyed = 1;
 
         [Min(0)] public int intrusionGoldPenalty = 250;
-        [Min(0)] public int intrusionReputationPenalty = 2;
 
         [Tooltip("Berapa lama sprite ormas terlihat di dalam dapur sebelum pergi.")]
         [Min(0.1f)]
@@ -80,9 +79,7 @@ namespace MBG.Data
         public float tauntInterval = 2.2f;
 
         [Header("Hasil encounter")]
-        [Min(0)] public int winReputationGain = 1;
         [Min(0)] public int loseGoldPenalty = 200;
-        [Min(0)] public int loseReputationPenalty = 1;
 
         [Header("Provokasi ormas (bahasa Indonesia)")]
         public List<string> taunts = new();

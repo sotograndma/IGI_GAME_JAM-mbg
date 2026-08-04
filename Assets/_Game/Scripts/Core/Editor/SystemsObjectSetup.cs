@@ -57,6 +57,7 @@ namespace MBG.Core
             changed |= EnsureComponent<GameClock>(systems);
             changed |= EnsureComponent<AudioService>(systems);
             changed |= EnsureComponent<EconomyService>(systems);
+            changed |= EnsureComponent<ReputationService>(systems);
             changed |= EnsureComponent<GameManager>(systems);
 
             if (changed)
@@ -64,7 +65,8 @@ namespace MBG.Core
                 EditorSceneManager.MarkSceneDirty(scene);
                 Selection.activeGameObject = systems;
                 Debug.Log($"[MBG] '{SystemsName}' siap: GameBootstrap + GameClock + AudioService + " +
-                          "EconomyService + GameManager. Jangan lupa simpan scene (Ctrl+S).", systems);
+                          "EconomyService + ReputationService + GameManager. " +
+                          "Jangan lupa simpan scene (Ctrl+S).", systems);
             }
             else
             {

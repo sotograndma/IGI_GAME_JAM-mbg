@@ -63,9 +63,13 @@ namespace MBG.UI
 
             if (footerLabel != null)
             {
+                bool endless = DayManager.Instance != null && DayManager.Instance.IsEndlessDay;
+
                 footerLabel.text = _victory
                     ? "Semua hari terlewati. Dapurmu bertahan sampai akhir!"
-                    : "Istirahat sebentar, besok pesanan datang lagi.";
+                    : endless
+                        ? $"Mode bertahan — hari terjauh: {HighScoreStore.GetBestDay()}."
+                        : "Istirahat sebentar, besok pesanan datang lagi.";
             }
 
             if (continueButtonLabel != null)

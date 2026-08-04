@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cda7a8dd2f5140d40a032cf1a6b15a4d, type: 3}
+  m_Name: ReputationConfig
+  m_EditorClassIdentifier: Assembly-CSharp::MBG.Data.ReputationConfigSO
+  minReputation: 0
+  maxReputation: 100
+  startingReputation: 50
+  burukMax: 25
+  biasaMax: 50
+  baikMax: 75
+  burukGoldMultiplier: 0.7
+  biasaGoldMultiplier: 1
+  baikGoldMultiplier: 1.2
+  dicintaiGoldMultiplier: 1.5
+  lovedExtraOrdersPerDay: 1
+  orderPerfect: 8
+  orderGood: 4
+  orderBad: -3
+  orderFailed: -12
+  obstacleResolved: 3
+  ormasIgnored: -15
+  santetIgnored: -10
+  illegalTaxIgnored: -8

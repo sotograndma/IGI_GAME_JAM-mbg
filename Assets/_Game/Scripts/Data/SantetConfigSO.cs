@@ -63,7 +63,6 @@ namespace MBG.Data
 
         [Header("Kalau ritme gagal")]
         [Min(0)] public int failGoldPenalty = 150;
-        [Min(0)] public int failReputationPenalty = 1;
         [Min(0)] public int failBatchesLost = 1;
 
         [Header("Fase 2 — cari dukun")]
@@ -85,7 +84,6 @@ namespace MBG.Data
         public string confrontationLabel = "Patahkan santetnya!";
 
         [Header("Hasil")]
-        [Min(0)] public int winReputationGain = 1;
         [Min(0)] public int confrontationFailGoldPenalty = 100;
 
         /// <summary>Pola sesuai tingkat kesulitan jadwal hari.</summary>

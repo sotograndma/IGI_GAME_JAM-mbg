@@ -19,3 +19,4 @@ MonoBehaviour:
   timeBetweenOrders: 3
   obstacleSchedule: []
   orderDeadlineMultiplier: 1
+  qteConfigOverride: {fileID: 0}

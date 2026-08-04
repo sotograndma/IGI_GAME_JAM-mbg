@@ -23,13 +23,9 @@ namespace MBG.Core
         public int Gold { get; private set; }
         public int Score { get; private set; }
 
-        /// <summary>Reputasi usaha catering. Mencapai 0 = permainan berakhir.</summary>
-        public int Reputation { get; private set; }
-
-        public int MaxReputation => scoring != null ? scoring.maxReputation : 5;
+        // Reputasi TIDAK di sini — itu urusan ReputationService.
 
         bool _initialized;
-        bool _gameOverRaised;
 
         void Awake() => Initialize();
 
@@ -48,8 +44,6 @@ namespace MBG.Core
             Instance = this;
             Gold = scoring != null ? scoring.startingGold : 0;
             Score = 0;
-            Reputation = scoring != null ? scoring.startingReputation : 3;
-            _gameOverRaised = false;
             _initialized = true;
         }
 
@@ -75,7 +69,6 @@ namespace MBG.Core
             // HUD tidak menampilkan 0 di frame pertama.
             GameEventBus.RaiseGoldChanged(Gold);
             GameEventBus.RaiseScoreChanged(Score);
-            GameEventBus.RaiseReputationChanged(Reputation);
         }
 
         void OnDestroy()
@@ -117,28 +110,6 @@ namespace MBG.Core
             return true;
         }
 
-        /// <summary>
-        /// Ubah reputasi. Mencapai 0 memancarkan
-        /// <see cref="GameEventBus.OnGameOver"/> sekali saja.
-        /// </summary>
-        public void AddReputation(int amount)
-        {
-            if (amount == 0) return;
-
-            int max = MaxReputation;
-            int next = Mathf.Clamp(Reputation + amount, 0, max);
-            if (next == Reputation) return;
-
-            Reputation = next;
-            GameEventBus.RaiseReputationChanged(Reputation);
-
-            if (Reputation > 0 || _gameOverRaised) return;
-
-            _gameOverRaised = true;
-            Debug.Log("[Economy] Reputasi habis — permainan berakhir.", this);
-            GameEventBus.RaiseGameOver(GameOverReason.ReputationZero);
-        }
-
         // ---- Event ----------------------------------------------------------
 
         void HandleOrderCompleted(OrderResult result)
@@ -146,11 +117,8 @@ namespace MBG.Core
             AddGold(result.goldEarned);
             AddScore(result.scoreEarned);
 
-            if (scoring != null) AddReputation(scoring.GetReputationDelta(result.quality));
-
             Debug.Log($"[Economy] Pesanan selesai: {result.goldEarned:+#;-#;0} gold, " +
-                      $"+{result.scoreEarned} skor. Total: {Gold} gold, {Score} skor, " +
-                      $"reputasi {Reputation}/{MaxReputation}.", this);
+                      $"+{result.scoreEarned} skor. Total: {Gold} gold, {Score} skor.", this);
         }
 
         void HandleOrderFailed(OrderRuntime order)
@@ -159,12 +127,11 @@ namespace MBG.Core
             // angka kedua yang bisa ketinggalan saat di-tune.
             if (scoring == null) return;
 
-            OrderResult result = scoring.CalculateResult(order, success: false);
+            OrderResult result = scoring.CalculateResult(order, success: false,
+                                                         ReputationService.CurrentGoldMultiplier);
             AddGold(result.goldEarned);
-            AddReputation(scoring.reputationOnFailed);
 
-            Debug.Log($"[Economy] Pesanan gagal: {result.goldEarned} gold. Total: {Gold} gold, " +
-                      $"reputasi {Reputation}/{MaxReputation}.", this);
+            Debug.Log($"[Economy] Pesanan gagal: {result.goldEarned} gold. Total: {Gold} gold.", this);
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]

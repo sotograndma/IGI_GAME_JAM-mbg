@@ -1,5 +1,6 @@
 using MBG.Catering;
 using MBG.Core;
+using MBG.Data;
 using MBG.Kitchen;
 using MBG.Obstacles;
 using TMPro;
@@ -36,6 +37,9 @@ namespace MBG.UI
         [Header("Uang & skor (kanan atas)")]
         [SerializeField] TMP_Text goldLabel;
         [SerializeField] TMP_Text scoreLabel;
+
+        [Tooltip("Ikon + teks reputasi; warnanya berubah per tingkat.")]
+        [SerializeField] TMP_Text reputationLabel;
 
         [Header("Timer (tengah atas)")]
         [SerializeField] RectTransform timerRoot;
@@ -114,6 +118,7 @@ namespace MBG.UI
             GameEventBus.OnOrderFailed += HandleOrderFailed;
             GameEventBus.OnGoldChanged += HandleGoldChanged;
             GameEventBus.OnScoreChanged += HandleScoreChanged;
+            GameEventBus.OnReputationChanged += HandleReputationChanged;
         }
 
         void Unsubscribe()
@@ -124,6 +129,7 @@ namespace MBG.UI
             GameEventBus.OnOrderFailed -= HandleOrderFailed;
             GameEventBus.OnGoldChanged -= HandleGoldChanged;
             GameEventBus.OnScoreChanged -= HandleScoreChanged;
+            GameEventBus.OnReputationChanged -= HandleReputationChanged;
         }
 
         // ---- Event ---------------------------------------------------------
@@ -172,6 +178,30 @@ namespace MBG.UI
         {
             _score = value;
             RefreshCurrency();
+        }
+
+        /// <summary>Ikon, teks, dan warna indikator reputasi berubah per tingkat.</summary>
+        void HandleReputationChanged(int value)
+        {
+            if (reputationLabel == null) return;
+
+            ReputationService service = ReputationService.Instance;
+            ReputationConfigSO config = service != null ? service.Config : ReputationConfigSO.Fallback;
+
+            ReputationTier tier = config.GetTier(value);
+
+            reputationLabel.text = $"{tier.GetIcon()} {tier.GetLabel()}  {value}/{config.maxReputation}";
+
+            UIStyle style = UIManager.Style;
+            if (style == null) return;
+
+            reputationLabel.color = tier switch
+            {
+                ReputationTier.Buruk => style.dangerColor,
+                ReputationTier.Biasa => style.textMuted,
+                ReputationTier.Baik => style.goodColor,
+                _ => style.perfectColor
+            };
         }
 
         void ClearOrder()

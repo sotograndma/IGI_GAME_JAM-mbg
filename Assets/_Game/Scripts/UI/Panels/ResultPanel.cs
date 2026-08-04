@@ -51,7 +51,7 @@ namespace MBG.UI
         public void ShowFailure(OrderRuntime order)
         {
             Show();
-            Populate(Scoring.CalculateResult(order, success: false));
+            Populate(Scoring.CalculateResult(order, success: false, ReputationService.CurrentGoldMultiplier));
         }
 
         protected override void OnShow()

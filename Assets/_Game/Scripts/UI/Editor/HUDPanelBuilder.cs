@@ -26,7 +26,7 @@ namespace MBG.UI
         const float CardHeight = 186f;
         const float CardPadding = 14f;
         const float CurrencyWidth = 340f;
-        const float CurrencyHeight = 92f;
+        const float CurrencyHeight = 130f;
         const float TimerWidth = 260f;
         const float TimerHeight = 84f;
         const float NextStepWidth = 900f;
@@ -149,6 +149,10 @@ namespace MBG.UI
                                          TextAlignmentOptions.Right, 24f, out created);
             if (created) { PlaceTop(score.rectTransform, -46f, 38f, 0f); changed = true; }
 
+            TMP_Text reputation = EnsureLabel(currency, "ReputationLabel", "- BIASA  50/100",
+                                              TextAlignmentOptions.Right, 22f, out created);
+            if (created) { PlaceTop(reputation.rectTransform, -86f, 34f, 0f); changed = true; }
+
             // ---- Timer (tengah atas) ----
             RectTransform timer = EnsureChild(root, "Timer", out created);
             if (created)
@@ -238,6 +242,7 @@ namespace MBG.UI
             bound |= SetObject(so, "qualityLabel", qualityLabel);
             bound |= SetObject(so, "goldLabel", gold);
             bound |= SetObject(so, "scoreLabel", score);
+            bound |= SetObject(so, "reputationLabel", reputation);
             bound |= SetObject(so, "timerRoot", timer);
             bound |= SetObject(so, "timerLabel", timerLabel);
             bound |= SetObject(so, "nextStepLabel", nextStepLabel);

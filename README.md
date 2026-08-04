@@ -92,7 +92,8 @@ di Inspector `__Systems`.
 | `GameClock.cs` | Sumber waktu gameplay. `GameClock.DeltaTime`, `SetMultiplier()`, `PushPause(reason)` / `PopPause(reason)` berpenghitung |
 | `InputService.cs` | Wrapper keyboard. `MoveAxis`, `SprintHeld`, `InteractPressed`, `ConfirmPressed`, `CancelPressed`, `AnyQTEKeyPressed`, `GetLastPressedKey()`, `OnTextInput`, `BackspacePressed`, `TextInputMode` |
 | `AudioService.cs` | Stub audio (`PlaySFX`, `PlayMusic`, `StopMusic`) plus enum `SfxId` / `MusicId` |
-| `EconomyService.cs` | `Gold`, `Score`, `Reputation`; menerapkan hasil pesanan dan menyiarkan perubahannya. Reputasi 0 memancarkan `OnGameOver` |
+| `EconomyService.cs` | `Gold` dan `Score`; menerapkan hasil pesanan dan menyiarkan perubahannya |
+| `ReputationService.cs` | `Reputation` 0–100 (mulai 50), tingkat, pengali gold, dan satu-satunya pemicu game over |
 | `HighScoreStore.cs` | Satu-satunya pemakaian `PlayerPrefs` di project ini (key `MBG_HighScore`) |
 | `GameOverReason.cs` | `enum { ReputationZero, Bankrupt, OrmasInvasion, SantetFatal }` + kalimat bahasa Indonesia |
 | `GameBootstrap.cs` | Menginisialisasi semua service dengan urutan yang benar + debug key |
@@ -293,6 +294,46 @@ Escape saat Playing → Paused → [Lanjut] / [Ulangi] / [Menu Utama]
 Pembagian tugas: `DayManager` tahu antrian dan urutan hari; `CateringController` hanya tahu satu
 pesanan yang sedang dimasak. Keduanya berbicara lewat event bus.
 
+## Reputasi
+
+| Tingkat | Rentang | Pengali gold | Bonus |
+| --- | --- | --- | --- |
+| Buruk | 0–25 | ×0.7 | — |
+| Biasa | 26–50 | ×1.0 | — |
+| Baik | 51–75 | ×1.2 | — |
+| Dicintai | 76–100 | ×1.5 | +1 pesanan per hari |
+
+Sumber perubahan (semua di `ReputationConfigSO`):
+
+| Kejadian | Perubahan |
+| --- | --- |
+| Pesanan PERFECT / BAIK / BURUK / GAGAL | +8 / +4 / −3 / −12 |
+| Gangguan berhasil diatasi | +3 |
+| Ormas / Santet / Pajak **diabaikan** sampai konsekuensinya jatuh | −15 / −10 / −8 |
+
+- Mencapai **0 adalah satu-satunya jalan menuju game over**.
+- Kalah di mini-game gangguan hanya memotong gold — reputasi baru turun kalau gangguan
+  benar-benar dibiarkan sampai konsekuensinya jatuh.
+- Indikator di HUD kanan atas berganti ikon dan warna mengikuti tingkat.
+
+## Jadwal tiga hari + mode bertahan
+
+| Hari | Pesanan | Gangguan | Deadline | QTE |
+| --- | --- | --- | --- | --- |
+| 1 | 2 | — (ajarkan loop memasak) | ×1.0 | per resep |
+| 2 | 3 | Pajak @45s (0.2), Ormas @120s (0.3) | ×0.95 | per resep |
+| 3 | 4 | Ormas @40s, Santet @100s, Pajak @165s, Ormas @230s — semua berat | ×0.85 | **QTE_Hard** |
+| 4+ | 4, +1 tiap 2 hari | mulai 2, +1 tiap hari, difficulty naik | turun 0.03/hari (min 0.6) | **QTE_Hard** |
+
+Mode bertahan menyusun harinya secara runtime (bukan asset baru), dan hari terjauh disimpan di
+`PlayerPrefs` dengan key `MBG_BestDay` — sama perlakuannya dengan high score.
+
+## Balancing Dashboard
+
+**Tools > MBG > Balancing Dashboard** menampilkan seluruh asset balancing di satu jendela dengan
+Inspector aslinya masing-masing, lengkap dengan kotak pencarian. Karena menggambar Inspector asli,
+field baru di ScriptableObject mana pun otomatis muncul tanpa mengubah kode dashboard.
+
 ## Lapisan Data (`Assets/_Game/Scripts/Data/`, namespace `MBG.Data`)
 
 | File | Isi |
@@ -302,6 +343,7 @@ pesanan yang sedang dimasak. Keduanya berbicara lewat event bus.
 | `RecipientSO.cs` | Institusi pemesan, ikon, `patienceMultiplier` (mengali deadline) |
 | `OrderSO.cs` | Resep + pemesan + porsi + deadline + bayaran dasar |
 | `CateringBalanceSO.cs` | Nilai tiap grade QTE dan ambang tingkat kualitas |
+| `ReputationConfigSO.cs` | Rentang, ambang tingkat, pengali gold, dan semua sumber perubahan reputasi |
 | `DayConfigSO.cs` | Isi satu hari: pesanan, jeda antar pesanan, jadwal gangguan, pengali deadline |
 | `ScoringConfigSO.cs` | **Semua rumus gold & skor** — satu-satunya tempat angka bayaran hidup |
 

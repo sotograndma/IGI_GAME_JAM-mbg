@@ -10,7 +10,22 @@ namespace MBG.Core
     {
         public const string Key = "MBG_HighScore";
 
+        /// <summary>Hari tertinggi yang pernah dicapai di mode bertahan — juga sebuah rekor.</summary>
+        public const string BestDayKey = "MBG_BestDay";
+
         public static int Get() => PlayerPrefs.GetInt(Key, 0);
+
+        public static int GetBestDay() => PlayerPrefs.GetInt(BestDayKey, 0);
+
+        /// <summary>Simpan hari terjauh kalau memecahkan rekor. True kalau rekor baru.</summary>
+        public static bool TrySubmitBestDay(int day)
+        {
+            if (day <= GetBestDay()) return false;
+
+            PlayerPrefs.SetInt(BestDayKey, day);
+            PlayerPrefs.Save();
+            return true;
+        }
 
         /// <summary>
         /// Simpan skor kalau memecahkan rekor. Mengembalikan true kalau rekor baru.
@@ -24,10 +39,11 @@ namespace MBG.Core
             return true;
         }
 
-        /// <summary>Hapus rekor. Hanya untuk debugging.</summary>
+        /// <summary>Hapus semua rekor. Hanya untuk debugging.</summary>
         public static void Clear()
         {
             PlayerPrefs.DeleteKey(Key);
+            PlayerPrefs.DeleteKey(BestDayKey);
             PlayerPrefs.Save();
         }
     }

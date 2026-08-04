@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using MBG.Catering;
 using MBG.Core;
 using MBG.Data;
+using MBG.Obstacles;
+using MBG.QTE;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -27,6 +29,33 @@ namespace MBG.World
         [Tooltip("Hari-hari permainan, berurutan. Diisi Tools > MBG > Build Catering Data.")]
         [SerializeField] List<DayConfigSO> days = new();
 
+        [Header("Mode bertahan")]
+        [Tooltip("Setelah hari terjadwal habis, pesanan terus datang dengan kesulitan naik.")]
+        [SerializeField] bool endlessEnabled = true;
+
+        [Tooltip("Kolam pesanan yang dipakai mode bertahan. Diisi Tools > MBG > Build Catering Data.")]
+        [SerializeField] List<OrderSO> endlessOrderPool = new();
+
+        [Tooltip("Preset QTE untuk mode bertahan. Diikat ke QTE_Hard.")]
+        [SerializeField] QTEConfigSO endlessQteConfig;
+
+        [Tooltip("Berapa pesanan di hari bertahan pertama.")]
+        [Min(1)]
+        [SerializeField] int endlessBaseOrderCount = 4;
+
+        [Tooltip("Tambahan pesanan tiap berapa hari bertahan.")]
+        [Min(1)]
+        [SerializeField] int endlessOrdersEveryDays = 2;
+
+        [Tooltip("Deadline dipotong sekian tiap hari bertahan, sampai batas bawah.")]
+        [SerializeField] float endlessDeadlineStep = 0.03f;
+
+        [SerializeField] float endlessMinDeadlineMultiplier = 0.6f;
+
+        [Tooltip("Jumlah gangguan di hari bertahan pertama.")]
+        [Min(0)]
+        [SerializeField] int endlessBaseObstacles = 2;
+
         [Header("Debug")]
         [Tooltip("F3 memulai hari pertama (atau mengulang hari yang sedang berjalan).")]
         [SerializeField] bool enableDebugKeys = true;
@@ -40,8 +69,14 @@ namespace MBG.World
 
         public bool IsDayRunning { get; private set; }
 
-        /// <summary>True kalau hari yang sedang berjalan adalah yang terakhir dijadwalkan.</summary>
-        public bool IsFinalDay => _dayIndex >= days.Count - 1;
+        /// <summary>
+        /// True hanya kalau tidak ada lagi hari setelah ini — di mode bertahan, hari
+        /// tidak pernah habis, jadi tidak pernah ada "hari terakhir".
+        /// </summary>
+        public bool IsFinalDay => !endlessEnabled && _dayIndex >= days.Count - 1;
+
+        /// <summary>True kalau hari yang sedang berjalan sudah di luar jadwal.</summary>
+        public bool IsEndlessDay => _dayIndex >= days.Count;
 
         /// <summary>Rekap hari terakhir yang selesai.</summary>
         public DayStats LastStats { get; private set; }
@@ -50,6 +85,11 @@ namespace MBG.World
 
         int _dayIndex = -1;
         int _orderIndex = -1;
+
+        /// <summary>Pesanan tambahan dari bonus reputasi tingkat Dicintai.</summary>
+        int _bonusOrders;
+
+        DayConfigSO _generatedDay;
 
         int _goldAtDayStart;
         int _scoreAtDayStart;
@@ -118,13 +158,29 @@ namespace MBG.World
                 return;
             }
 
-            if (index < 0 || index >= days.Count)
+            if (index < 0)
+            {
+                Debug.LogWarning($"[Day] Indeks hari tidak valid: {index}.", this);
+                return;
+            }
+
+            DayConfigSO config;
+
+            if (index < days.Count)
+            {
+                config = days[index];
+            }
+            else if (endlessEnabled)
+            {
+                // Jadwal habis: susun hari baru yang makin berat.
+                config = BuildEndlessDay(index);
+            }
+            else
             {
                 Debug.LogWarning($"[Day] Tidak ada hari ke-{index + 1}. Total hari: {days.Count}.", this);
                 return;
             }
 
-            DayConfigSO config = days[index];
             if (config == null || config.OrderCount == 0)
             {
                 Debug.LogWarning($"[Day] Hari ke-{index + 1} tidak punya pesanan.", this);
@@ -134,6 +190,14 @@ namespace MBG.World
             _dayIndex = index;
             CurrentDayConfig = config;
             IsDayRunning = true;
+
+            // Reputasi tingkat Dicintai menarik pelanggan tambahan.
+            _bonusOrders = ReputationService.Instance != null
+                ? ReputationService.Instance.ExtraOrdersPerDay
+                : 0;
+
+            if (_bonusOrders > 0)
+                Debug.Log($"[Day] Reputasi Dicintai — {_bonusOrders} pesanan tambahan hari ini.", this);
 
             _orderIndex = -1;
             _succeeded = 0;
@@ -145,8 +209,13 @@ namespace MBG.World
             _goldAtDayStart = economy != null ? economy.Gold : 0;
             _scoreAtDayStart = economy != null ? economy.Score : 0;
 
-            Debug.Log($"[Day] Hari {config.dayNumber} dimulai — {config.OrderCount} pesanan, " +
-                      $"pengali deadline {config.orderDeadlineMultiplier:0.##}.", this);
+            Debug.Log($"[Day] Hari {config.dayNumber} dimulai — {config.OrderCount + _bonusOrders} pesanan, " +
+                      $"pengali deadline {config.orderDeadlineMultiplier:0.##}" +
+                      $"{(IsEndlessDay ? ", mode bertahan" : "")}.", this);
+
+            // Bertahan sampai hari ini sudah sebuah pencapaian; catat rekornya.
+            if (HighScoreStore.TrySubmitBestDay(config.dayNumber))
+                Debug.Log($"[Day] Rekor baru: hari {config.dayNumber}.", this);
 
             GameEventBus.RaiseDayStarted(config.dayNumber);
 
@@ -156,16 +225,18 @@ namespace MBG.World
 
         // ---- Antrian pesanan --------------------------------------------------
 
+        int TotalOrdersToday => CurrentDayConfig != null ? CurrentDayConfig.OrderCount + _bonusOrders : 0;
+
         void AdvanceOrder()
         {
             if (!IsDayRunning || CurrentDayConfig == null) return;
 
             _orderIndex++;
 
-            while (_orderIndex < CurrentDayConfig.OrderCount && CurrentDayConfig.GetOrder(_orderIndex) == null)
+            while (_orderIndex < TotalOrdersToday && ResolveOrder(_orderIndex) == null)
                 _orderIndex++;
 
-            if (_orderIndex >= CurrentDayConfig.OrderCount)
+            if (_orderIndex >= TotalOrdersToday)
             {
                 CompleteDay();
                 return;
@@ -179,11 +250,25 @@ namespace MBG.World
                 return;
             }
 
-            OrderSO order = CurrentDayConfig.GetOrder(_orderIndex);
-            Debug.Log($"[Day] Pesanan {_orderIndex + 1}/{CurrentDayConfig.OrderCount} hari " +
+            OrderSO order = ResolveOrder(_orderIndex);
+            Debug.Log($"[Day] Pesanan {_orderIndex + 1}/{TotalOrdersToday} hari " +
                       $"{CurrentDayConfig.dayNumber}.", this);
 
-            catering.StartOrder(order, CurrentDayConfig.orderDeadlineMultiplier);
+            catering.StartOrder(order, CurrentDayConfig.orderDeadlineMultiplier,
+                                CurrentDayConfig.qteConfigOverride);
+        }
+
+        /// <summary>
+        /// Pesanan pada indeks tertentu. Indeks di luar daftar hari berarti pesanan
+        /// bonus dari reputasi — diambil berputar dari daftar yang sama.
+        /// </summary>
+        OrderSO ResolveOrder(int index)
+        {
+            if (CurrentDayConfig == null || CurrentDayConfig.OrderCount == 0) return null;
+
+            if (index < CurrentDayConfig.OrderCount) return CurrentDayConfig.GetOrder(index);
+
+            return CurrentDayConfig.GetOrder(index % CurrentDayConfig.OrderCount);
         }
 
         /// <summary>
@@ -215,9 +300,9 @@ namespace MBG.World
                 scoreEarned = economy != null ? economy.Score - _scoreAtDayStart : 0,
                 ordersSucceeded = _succeeded,
                 ordersFailed = _failed,
-                totalOrders = CurrentDayConfig != null ? CurrentDayConfig.OrderCount : 0,
-                reputation = economy != null ? economy.Reputation : 0,
-                maxReputation = economy != null ? economy.MaxReputation : 0,
+                totalOrders = TotalOrdersToday,
+                reputation = ReputationService.Instance != null ? ReputationService.Instance.Reputation : 0,
+                maxReputation = ReputationService.Instance != null ? ReputationService.Instance.MaxReputation : 0,
                 isFinalDay = IsFinalDay
             };
 
@@ -230,6 +315,88 @@ namespace MBG.World
             GameManager manager = GameManager.Instance;
             if (manager != null && manager.State != GameState.GameOver)
                 manager.ChangeState(GameState.DaySummary);
+        }
+
+        // ---- Mode bertahan --------------------------------------------------------
+
+        /// <summary>
+        /// Susun hari di luar jadwal: makin banyak pesanan, deadline makin ketat,
+        /// gangguan makin sering, dan QTE memakai preset tersulit.
+        ///
+        /// Config-nya dibuat runtime (bukan asset) supaya tidak ada file baru yang
+        /// menumpuk di project setiap kali pemain bertahan lama.
+        /// </summary>
+        DayConfigSO BuildEndlessDay(int index)
+        {
+            List<OrderSO> pool = endlessOrderPool != null && endlessOrderPool.Count > 0
+                ? endlessOrderPool
+                : CollectOrdersFromSchedule();
+
+            if (pool.Count == 0)
+            {
+                Debug.LogWarning("[Day] Mode bertahan tidak punya kolam pesanan.", this);
+                return null;
+            }
+
+            int endlessIndex = index - days.Count;   // 0 untuk hari bertahan pertama
+            int dayNumber = index + 1;
+
+            if (_generatedDay == null)
+            {
+                _generatedDay = ScriptableObject.CreateInstance<DayConfigSO>();
+                _generatedDay.name = "Day_Endless (runtime)";
+            }
+
+            _generatedDay.dayNumber = dayNumber;
+            _generatedDay.timeBetweenOrders = 2.5f;
+
+            _generatedDay.orderDeadlineMultiplier = Mathf.Max(
+                endlessMinDeadlineMultiplier,
+                0.85f - endlessDeadlineStep * endlessIndex);
+
+            _generatedDay.qteConfigOverride = endlessQteConfig;
+
+            int orderCount = endlessBaseOrderCount + endlessIndex / Mathf.Max(1, endlessOrdersEveryDays);
+            _generatedDay.orders = new List<OrderSO>(orderCount);
+            for (int i = 0; i < orderCount; i++)
+                _generatedDay.orders.Add(pool[i % pool.Count]);
+
+            // Gangguan bertambah satu tiap hari bertahan, disebar rata sepanjang hari.
+            int obstacleCount = endlessBaseObstacles + endlessIndex;
+            float difficulty = Mathf.Clamp01(0.5f + endlessIndex * 0.1f);
+
+            _generatedDay.obstacleSchedule = new List<ObstacleScheduleEntry>(obstacleCount);
+            for (int i = 0; i < obstacleCount; i++)
+            {
+                _generatedDay.obstacleSchedule.Add(new ObstacleScheduleEntry
+                {
+                    type = (ObstacleType)(i % 3),
+                    triggerAtSeconds = 25f + i * 30f,
+                    difficulty = difficulty
+                });
+            }
+
+            Debug.Log($"[Day] Hari bertahan {dayNumber}: {orderCount} pesanan, {obstacleCount} gangguan, " +
+                      $"deadline x{_generatedDay.orderDeadlineMultiplier:0.##}, difficulty {difficulty:0.00}.", this);
+
+            return _generatedDay;
+        }
+
+        List<OrderSO> CollectOrdersFromSchedule()
+        {
+            var pool = new List<OrderSO>();
+
+            foreach (DayConfigSO day in days)
+            {
+                if (day == null) continue;
+
+                foreach (OrderSO order in day.orders)
+                {
+                    if (order != null && !pool.Contains(order)) pool.Add(order);
+                }
+            }
+
+            return pool;
         }
 
         // ---- Event -------------------------------------------------------------
@@ -253,7 +420,7 @@ namespace MBG.World
 
             // Pesanan terakhir tidak perlu menunggu apa-apa — langsung tutup hari,
             // supaya tidak ada jeda kosong sebelum layar ringkasan.
-            bool hasMoreOrders = CurrentDayConfig != null && _orderIndex + 1 < CurrentDayConfig.OrderCount;
+            bool hasMoreOrders = _orderIndex + 1 < TotalOrdersToday;
 
             if (delay <= 0f || !hasMoreOrders)
             {

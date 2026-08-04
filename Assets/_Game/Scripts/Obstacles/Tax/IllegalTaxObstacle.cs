@@ -129,14 +129,12 @@ namespace MBG.Obstacles
             IllegalTaxConfigSO cfg = Config;
 
             EconomyService economy = EconomyService.Instance;
-            if (economy != null)
-            {
-                economy.AddGold(-cfg.sealGoldPenalty);
-                economy.AddReputation(-cfg.sealReputationPenalty);
-            }
+            if (economy != null) economy.AddGold(-cfg.sealGoldPenalty);
 
-            Debug.Log($"[Pungli] Usaha disegel sementara — -{cfg.sealGoldPenalty} gold, " +
-                      $"-{cfg.sealReputationPenalty} reputasi.");
+            if (ReputationService.Instance != null)
+                ReputationService.Instance.ApplyIgnoredPenalty(ObstacleType.IllegalTax);
+
+            Debug.Log($"[Pungli] Usaha disegel sementara — -{cfg.sealGoldPenalty} gold.");
             AudioService.PlaySFX(SfxId.DoorBang);
 
             Resolve(false);
@@ -219,14 +217,13 @@ namespace MBG.Obstacles
             {
                 case QTEGrade.Perfect:
                 case QTEGrade.Good:
-                    if (economy != null) economy.AddReputation(cfg.winReputationGain);
-
+                    // Reputasi ditambahkan ReputationService lewat OnObstacleResolved.
                     closing = dialogue != null
                         ? (result.grade == QTEGrade.Perfect ? dialogue.GetClosingPerfect() : dialogue.GetClosingGood())
                         : "";
                     success = true;
 
-                    Debug.Log($"[Pungli] Pemeras kabur — +{cfg.winReputationGain} reputasi.");
+                    Debug.Log("[Pungli] Pemeras kabur.");
                     AudioService.PlaySFX(SfxId.OrderComplete);
                     break;
 
@@ -241,18 +238,17 @@ namespace MBG.Obstacles
                     break;
 
                 default:
-                    // Tidak selesai: bayar penuh dan reputasi ikut turun.
-                    if (economy != null)
-                    {
-                        economy.AddGold(-cfg.fullGoldPenalty);
-                        economy.AddReputation(-cfg.failReputationPenalty);
-                    }
+                    // Tidak selesai berarti tidak melawan sama sekali, jadi tarifnya
+                    // sama dengan gangguan yang diabaikan.
+                    if (economy != null) economy.AddGold(-cfg.fullGoldPenalty);
+
+                    if (ReputationService.Instance != null)
+                        ReputationService.Instance.ApplyIgnoredPenalty(ObstacleType.IllegalTax);
 
                     closing = dialogue != null ? dialogue.GetClosingFail() : "";
                     success = false;
 
-                    Debug.Log($"[Pungli] Menyerah — bayar penuh, -{cfg.fullGoldPenalty} gold, " +
-                              $"-{cfg.failReputationPenalty} reputasi.");
+                    Debug.Log($"[Pungli] Menyerah — bayar penuh, -{cfg.fullGoldPenalty} gold.");
                     break;
             }
 

@@ -127,17 +127,18 @@ namespace MBG.Obstacles
             if (catering != null) portionsLost = catering.DestroyBatches(cfg.batchesDestroyed);
 
             EconomyService economy = EconomyService.Instance;
-            if (economy != null)
-            {
-                economy.AddGold(-cfg.intrusionGoldPenalty);
-                economy.AddReputation(-cfg.intrusionReputationPenalty);
-            }
+            if (economy != null) economy.AddGold(-cfg.intrusionGoldPenalty);
+
+            // Ini kasus "diabaikan sampai konsekuensinya jatuh" — potongannya jauh
+            // lebih besar daripada sekadar kalah adu dorong, dan angkanya ada di
+            // ReputationConfigSO.
+            if (ReputationService.Instance != null)
+                ReputationService.Instance.ApplyIgnoredPenalty(ObstacleType.Ormas);
 
             ScreenShakeService.Pulse(cfg.intrusionShakeAmplitude, cfg.intrusionShakeDuration);
             AudioService.PlaySFX(SfxId.DoorBang);
 
-            Debug.Log($"[Ormas] MENEROBOS! {portionsLost} porsi hancur, " +
-                      $"-{cfg.intrusionGoldPenalty} gold, -{cfg.intrusionReputationPenalty} reputasi.");
+            Debug.Log($"[Ormas] MENEROBOS! {portionsLost} porsi hancur, -{cfg.intrusionGoldPenalty} gold.");
 
             Resolve(false);
         }
@@ -195,9 +196,9 @@ namespace MBG.Obstacles
 
             if (result.IsSuccess)
             {
-                if (economy != null) economy.AddReputation(cfg.winReputationGain);
-
-                Debug.Log($"[Ormas] Berhasil diusir — +{cfg.winReputationGain} reputasi.");
+                // Reputasi untuk gangguan yang berhasil diatasi ditambahkan
+                // ReputationService lewat OnObstacleResolved.
+                Debug.Log("[Ormas] Berhasil diusir.");
                 AudioService.PlaySFX(SfxId.OrderComplete);
 
                 Resolve(true);
@@ -205,15 +206,11 @@ namespace MBG.Obstacles
                 return;
             }
 
-            if (economy != null)
-            {
-                economy.AddGold(-cfg.loseGoldPenalty);
-                economy.AddReputation(-cfg.loseReputationPenalty);
-            }
+            if (economy != null) economy.AddGold(-cfg.loseGoldPenalty);
 
-            // Kalah pun mereka tetap pergi — pemain tidak boleh terjebak di luar.
-            Debug.Log($"[Ormas] Kalah adu dorong — -{cfg.loseGoldPenalty} gold, " +
-                      $"-{cfg.loseReputationPenalty} reputasi. Mereka tetap pergi.");
+            // Kalah adu dorong bukan "diabaikan": ongkosnya gold saja, reputasi aman.
+            // Dan mereka tetap pergi — pemain tidak boleh terjebak di luar.
+            Debug.Log($"[Ormas] Kalah adu dorong — -{cfg.loseGoldPenalty} gold. Mereka tetap pergi.");
             AudioService.PlaySFX(SfxId.OrderFail);
 
             Resolve(false);

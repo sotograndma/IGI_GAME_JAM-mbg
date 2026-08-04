@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using MBG.Data;
 using MBG.Kitchen;
+using MBG.Obstacles;
 using MBG.QTE;
 using UnityEditor;
 using UnityEngine;
@@ -60,6 +61,7 @@ namespace MBG.Catering
 
             CateringBalanceSO balance = EnsureBalance(log, ref changed);
             ScoringConfigSO scoring = EnsureScoring(log, ref changed);
+            ReputationConfigSO reputation = EnsureReputation(log, ref changed);
 
             RecipeStepSO stepPrep = EnsureStep("Step_Prep_PotongSayur", StationType.Prep, easy,
                                                "Potong sayur", log, ref changed);
@@ -84,7 +86,8 @@ namespace MBG.Catering
 
             changed |= EnsureController(scene, balance, scoring, orders, log);
             changed |= EnsureEconomy(scene, scoring, log);
-            changed |= EnsureDayManager(scene, days, log);
+            changed |= EnsureReputationService(scene, reputation, log);
+            changed |= EnsureDayManager(scene, days, orders, log);
             changed |= BindResultPanel(scoring, log);
 
             if (changed)
@@ -343,11 +346,33 @@ namespace MBG.Catering
             OrderSO sedang = orders.Count > 1 ? orders[1] : null;
             OrderSO besar = orders.Count > 2 ? orders[2] : null;
 
+            var hard = AssetDatabase.LoadAssetAtPath<QTEConfigSO>(QteFolder + "/QTE_Hard.asset");
+
+            // Eskalasi tiga hari: ajarkan dulu, perkenalkan gangguan, lalu tekan.
             var days = new List<DayConfigSO>
             {
+                // Hari 1 — tanpa gangguan sama sekali. Pemain belajar loop memasak.
                 EnsureDay("Day_01", 1, new[] { kecil, sedang }, 3f, 1f, log, ref changed),
-                EnsureDay("Day_02", 2, new[] { kecil, sedang, besar }, 3f, 0.95f, log, ref changed),
-                EnsureDay("Day_03", 3, new[] { sedang, besar, sedang, besar }, 2.5f, 0.9f, log, ref changed),
+
+                // Hari 2 — satu Ormas dan satu Pajak Ilegal, keduanya ringan.
+                EnsureDay("Day_02", 2, new[] { kecil, sedang, besar }, 3f, 0.95f, log, ref changed,
+                    new[]
+                    {
+                        Schedule(ObstacleType.IllegalTax, 45f, 0.2f),
+                        Schedule(ObstacleType.Ormas, 120f, 0.3f)
+                    }),
+
+                // Hari 3 — dua Ormas, satu Santet, satu Pajak Ilegal, semuanya berat,
+                // deadline dipotong dan seluruh QTE naik ke preset Hard.
+                EnsureDay("Day_03", 3, new[] { sedang, besar, sedang, besar }, 2.5f, 0.85f, log, ref changed,
+                    new[]
+                    {
+                        Schedule(ObstacleType.Ormas, 40f, 0.75f),
+                        Schedule(ObstacleType.Santet, 100f, 0.8f),
+                        Schedule(ObstacleType.IllegalTax, 165f, 0.7f),
+                        Schedule(ObstacleType.Ormas, 230f, 0.9f)
+                    },
+                    hard),
             };
 
             return days;
@@ -355,28 +380,44 @@ namespace MBG.Catering
 
         static DayConfigSO EnsureDay(string assetName, int dayNumber, OrderSO[] dayOrders,
                                      float timeBetweenOrders, float deadlineMultiplier,
-                                     List<string> log, ref bool changed)
+                                     List<string> log, ref bool changed,
+                                     ObstacleScheduleEntry[] schedule = null,
+                                     QTEConfigSO qteOverride = null)
         {
             var day = LoadOrCreate<DayConfigSO>(assetName, out bool created);
-            if (!created) return day;
 
-            day.dayNumber = dayNumber;
-            day.orders = new List<OrderSO>(dayOrders);
-            day.timeBetweenOrders = timeBetweenOrders;
-            day.orderDeadlineMultiplier = deadlineMultiplier;
+            if (created)
+            {
+                day.dayNumber = dayNumber;
+                day.orders = new List<OrderSO>(dayOrders);
+                day.timeBetweenOrders = timeBetweenOrders;
+                day.orderDeadlineMultiplier = deadlineMultiplier;
+                day.qteConfigOverride = qteOverride;
 
-            // Jadwal gangguan sengaja dibiarkan kosong — sistemnya belum ada.
-            day.obstacleSchedule = new List<ObstacleScheduleEntry>();
+                changed = true;
+                log.Add($"{assetName} dibuat ({dayOrders.Length} pesanan, jeda {timeBetweenOrders}s, " +
+                        $"pengali deadline {deadlineMultiplier:0.##}).");
+            }
+
+            // Jadwal gangguan diisi hanya kalau masih kosong, supaya tuning tangan
+            // tidak tertimpa saat tool dijalankan ulang.
+            if (schedule != null && schedule.Length > 0
+                && (day.obstacleSchedule == null || day.obstacleSchedule.Count == 0))
+            {
+                day.obstacleSchedule = new List<ObstacleScheduleEntry>(schedule);
+                changed = true;
+                log.Add($"{assetName}: {schedule.Length} gangguan dijadwalkan.");
+            }
 
             EditorUtility.SetDirty(day);
-
-            changed = true;
-            log.Add($"{assetName} dibuat ({dayOrders.Length} pesanan, jeda {timeBetweenOrders}s, " +
-                    $"pengali deadline {deadlineMultiplier:0.##}).");
             return day;
         }
 
-        static bool EnsureDayManager(Scene scene, List<DayConfigSO> days, List<string> log)
+        static ObstacleScheduleEntry Schedule(ObstacleType type, float at, float difficulty)
+            => new ObstacleScheduleEntry { type = type, triggerAtSeconds = at, difficulty = difficulty };
+
+        static bool EnsureDayManager(Scene scene, List<DayConfigSO> days, List<OrderSO> orders,
+                                     List<string> log)
         {
             GameObject systems = FindRoot(scene, SystemsName);
             if (systems == null) return false;
@@ -400,9 +441,70 @@ namespace MBG.Catering
                 for (int i = 0; i < days.Count; i++)
                     daysProp.GetArrayElementAtIndex(i).objectReferenceValue = days[i];
 
-                so.ApplyModifiedProperties();
                 changed = true;
                 log.Add($"DayManager.days diisi {days.Count} hari (F3 memulai dari hari pertama).");
+            }
+
+            // Kolam pesanan untuk mode bertahan.
+            SerializedProperty poolProp = so.FindProperty("endlessOrderPool");
+            if (poolProp != null && poolProp.arraySize == 0)
+            {
+                poolProp.arraySize = orders.Count;
+                for (int i = 0; i < orders.Count; i++)
+                    poolProp.GetArrayElementAtIndex(i).objectReferenceValue = orders[i];
+
+                changed = true;
+                log.Add($"DayManager.endlessOrderPool diisi {orders.Count} pesanan.");
+            }
+
+            SerializedProperty endlessQte = so.FindProperty("endlessQteConfig");
+            var hard = AssetDatabase.LoadAssetAtPath<QTEConfigSO>(QteFolder + "/QTE_Hard.asset");
+            if (endlessQte != null && hard != null && endlessQte.objectReferenceValue != hard)
+            {
+                endlessQte.objectReferenceValue = hard;
+                changed = true;
+                log.Add("DayManager.endlessQteConfig diikat ke QTE_Hard.");
+            }
+
+            so.ApplyModifiedProperties();
+            return changed;
+        }
+
+        static ReputationConfigSO EnsureReputation(List<string> log, ref bool changed)
+        {
+            var reputation = LoadOrCreate<ReputationConfigSO>("ReputationConfig", out bool created);
+            if (!created) return reputation;
+
+            EditorUtility.SetDirty(reputation);
+            changed = true;
+            log.Add($"{CateringFolder}/ReputationConfig.asset dibuat " +
+                    "(mulai 50/100, order +8/+4/-3/-12, gangguan +3, diabaikan -15/-10/-8).");
+            return reputation;
+        }
+
+        static bool EnsureReputationService(Scene scene, ReputationConfigSO config, List<string> log)
+        {
+            GameObject systems = FindRoot(scene, SystemsName);
+            if (systems == null) return false;
+
+            bool changed = false;
+
+            var service = systems.GetComponent<MBG.Core.ReputationService>();
+            if (service == null)
+            {
+                service = Undo.AddComponent<MBG.Core.ReputationService>(systems);
+                changed = true;
+                log.Add($"ReputationService ditambahkan ke '{SystemsName}'.");
+            }
+
+            var so = new SerializedObject(service);
+            SerializedProperty prop = so.FindProperty("config");
+            if (prop != null && prop.objectReferenceValue != config)
+            {
+                prop.objectReferenceValue = config;
+                so.ApplyModifiedProperties();
+                changed = true;
+                log.Add("ReputationService.config diikat.");
             }
 
             return changed;

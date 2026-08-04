@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using MBG.Obstacles;
+using MBG.QTE;
 using UnityEngine;
 
 namespace MBG.Data
@@ -47,6 +48,10 @@ namespace MBG.Data
         [Tooltip("Pengali deadline seluruh pesanan hari ini. <1 membuat hari terasa lebih menekan.")]
         [Min(0.1f)]
         public float orderDeadlineMultiplier = 1f;
+
+        [Tooltip("Kalau diisi, seluruh QTE langkah resep hari ini memakai preset ini " +
+                 "alih-alih preset di RecipeStepSO. Dipakai hari-hari akhir yang naik kelas.")]
+        public QTEConfigSO qteConfigOverride;
 
         public int OrderCount => orders != null ? orders.Count : 0;
 

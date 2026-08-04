@@ -26,7 +26,6 @@ namespace MBG.Data
 
         [Header("Kalau diabaikan sampai disegel")]
         [Min(0)] public int sealGoldPenalty = 400;
-        [Min(0)] public int sealReputationPenalty = 1;
 
         [Header("Tantangan mengetik")]
         [Min(5f)] public float typingTimeLimit = 45f;
@@ -35,7 +34,6 @@ namespace MBG.Data
         [Range(0.3f, 1f)] public float goodAccuracy = 0.8f;
 
         [Header("Hasil")]
-        [Min(0)] public int winReputationGain = 1;
 
         [Tooltip("Dibayar saat ketikan selesai tapi berantakan.")]
         [Min(0)] public int partialGoldPenalty = 200;
@@ -43,7 +41,6 @@ namespace MBG.Data
         [Tooltip("Dibayar penuh saat tantangan tidak selesai.")]
         [Min(0)] public int fullGoldPenalty = 450;
 
-        [Min(0)] public int failReputationPenalty = 1;
 
         [Header("NPC petugas")]
         public string npcPrompt = "Layani petugas";

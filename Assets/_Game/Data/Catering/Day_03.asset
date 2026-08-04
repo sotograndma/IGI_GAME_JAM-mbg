@@ -19,5 +19,18 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 158c7f8e8cc270442a2b47fdd14dad57, type: 2}
   - {fileID: 11400000, guid: c0f23bdd71fd074459f9d7a676a511b5, type: 2}
   timeBetweenOrders: 2.5
-  obstacleSchedule: []
+  obstacleSchedule:
+  - type: 0
+    triggerAtSeconds: 40
+    difficulty: 0.75
+  - type: 1
+    triggerAtSeconds: 100
+    difficulty: 0.8
+  - type: 2
+    triggerAtSeconds: 165
+    difficulty: 0.7
+  - type: 0
+    triggerAtSeconds: 230
+    difficulty: 0.9
   orderDeadlineMultiplier: 0.9
+  qteConfigOverride: {fileID: 0}

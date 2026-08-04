@@ -205,15 +205,15 @@ namespace MBG.Obstacles
             if (catering != null) portionsLost = catering.DestroyBatches(cfg.failBatchesLost);
 
             EconomyService economy = EconomyService.Instance;
-            if (economy != null)
-            {
-                economy.AddGold(-cfg.failGoldPenalty);
-                economy.AddReputation(-cfg.failReputationPenalty);
-            }
+            if (economy != null) economy.AddGold(-cfg.failGoldPenalty);
+
+            // Santet yang tembus = gangguan yang tidak tertahan; potongan reputasinya
+            // memakai tarif "diabaikan" dari ReputationConfigSO.
+            if (ReputationService.Instance != null)
+                ReputationService.Instance.ApplyIgnoredPenalty(ObstacleType.Santet);
 
             Debug.Log($"[Santet] Santet tembus — {portionsLost} porsi hancur, " +
-                      $"-{cfg.failGoldPenalty} gold, -{cfg.failReputationPenalty} reputasi. " +
-                      "Permainan tetap lanjut.");
+                      $"-{cfg.failGoldPenalty} gold. Permainan tetap lanjut.");
 
             Resolve(false);
         }
@@ -255,9 +255,7 @@ namespace MBG.Obstacles
 
             if (result.IsSuccess)
             {
-                if (economy != null) economy.AddReputation(cfg.winReputationGain);
-
-                Debug.Log($"[Santet] Santet dipatahkan — +{cfg.winReputationGain} reputasi.");
+                Debug.Log("[Santet] Santet dipatahkan.");
                 AudioService.PlaySFX(SfxId.OrderComplete);
 
                 Resolve(true);
