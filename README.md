@@ -18,7 +18,9 @@ Aturan kerja untuk kontributor (manusia maupun AI) ada di [CLAUDE.md](CLAUDE.md)
    `Text` ke `TextMeshProUGUI`.
 5. Jalankan menu **Tools > MBG > Build Kitchen Stations**. Tool ini membuat `KitchenLayout.asset`,
    prefab `Station_Generic`, dan menata empat station di bawah `InteriorRoot/Stations`.
-6. Simpan scene (Ctrl+S).
+6. Jalankan menu **Tools > MBG > Build QTE Setup**. Tool ini membuat tiga preset kesulitan,
+   memasang `QTEController` di `__Systems`, dan mengisi `QTEPanel` dengan bar, zona, dan indikator.
+7. Simpan scene (Ctrl+S).
 
 Semua tool di atas aman dijalankan berkali-kali (idempoten), mendukung Undo, dan menolak jalan
 saat Play mode.
@@ -44,7 +46,8 @@ ada sistem yang boleh memanggil `Keyboard.current` langsung.
 | Tombol | Fungsi |
 | --- | --- |
 | `F1` | Cetak ringkasan state ke Console: `GameState`, `IsGameplayActive`, multiplier & status pause `GameClock`, `TextInputMode`, `MoveAxis`, musik aktif |
-| `F2`–`F12` | Belum dipakai — disediakan untuk sistem berikutnya (order, QTE, obstacle) |
+| `F2` | Memicu satu `TimingBarQTE` dengan preset `QTE_Normal` dari mana saja, untuk tes cepat |
+| `F3`–`F12` | Belum dipakai — disediakan untuk sistem berikutnya (order, obstacle) |
 
 Untuk menguji prompt **"Belum saatnya"** tanpa sistem pesanan: centang **Debug Force Irrelevant**
 di Inspector station mana pun.
@@ -90,6 +93,44 @@ kalau ada station yang keluar ruangan, menabrak zona pintu, atau saling tumpang 
 
 Relevansi station diisi dari luar lewat `KitchenStation.RelevanceCheck` — station tidak boleh
 tahu apa pun tentang sistem pesanan. Selama belum diisi, semua station relevan.
+
+## Lapisan QTE (`Assets/_Game/Scripts/QTE/`, namespace `MBG.QTE`)
+
+| File | Isi |
+| --- | --- |
+| `QTEGrade.cs` | `enum { Perfect, Good, Miss, CriticalMiss }` — urut dari terbaik ke terburuk |
+| `QTEType.cs` | `enum { TimingBar, Rhythm, Mash }` |
+| `QTERequest.cs` / `QTEResult.cs` | Permintaan sesi dan hasilnya |
+| `IQTEModule.cs` | Kontrak module + `ITimingBarReadout` untuk UI |
+| `QTEConfigSO.cs` | Semua angka kesulitan — preset di `Assets/_Game/Data/QTE/` |
+| `QTEController.cs` | Singleton: pilih module, bekukan pemain, atur `GameState`, pancarkan hasil |
+| `Modules/TimingBarQTE.cs` | Skill check ala Dead by Daylight, mendukung multi-hit |
+
+Cara memanggil QTE dari sistem lain:
+
+```csharp
+QTEController.Instance.Begin(QTERequest.TimingBar(
+    config,                       // QTEConfigSO
+    "Potong bawang!",             // instruksi yang tampil di panel
+    result => { /* result.grade, result.accuracy, ... */ }));
+```
+
+Preset bawaan:
+
+| Preset | Durasi lintasan | Zona Good | Zona Perfect | Hit |
+| --- | --- | --- | --- | --- |
+| `QTE_Easy` | 1.6s ÷ 0.85 | 0.42 | 0.16 | 1 |
+| `QTE_Normal` | 1.2s ÷ 1.00 | 0.30 | 0.10 | 2 |
+| `QTE_Hard` | 0.9s ÷ 1.25 | 0.20 | 0.06 | 3 |
+
+Aturan QTE:
+
+- Nilai akhir sesi = nilai **terburuk** di antara semua hit. Satu `CriticalMiss` (indikator sampai
+  ujung tanpa input) langsung mengakhiri sesi.
+- Module di-tick dengan `GameClock.DeltaTime`, jadi QTE ikut berhenti saat clock gameplay di-pause.
+- Pemain dibekukan lewat `PlayerController2D.SetFrozen()` selama sesi berjalan.
+- Panel muncul karena `UIManager` mendengar `GameState` berubah ke `InQTE` — sistem QTE tidak
+  pernah memanggil UI secara langsung.
 
 ## Lapisan UI (`Assets/_Game/Scripts/UI/`, namespace `MBG.UI`)
 

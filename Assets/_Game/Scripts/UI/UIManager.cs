@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using MBG.Core;
 using UnityEngine;
 
 namespace MBG.UI
@@ -40,6 +41,11 @@ namespace MBG.UI
             Instance = this;
             RegisterPanelsInChildren();
 
+            // Panel muncul karena state berubah, bukan karena sistem gameplay
+            // memanggil UI. Disubscribe di Awake (bukan OnEnable) supaya tetap
+            // jalan walau panelnya sendiri sedang nonaktif.
+            GameEventBus.OnGameStateChanged += HandleGameStateChanged;
+
             if (style == null && !_missingStyleWarned)
             {
                 _missingStyleWarned = true;
@@ -50,7 +56,20 @@ namespace MBG.UI
 
         void OnDestroy()
         {
+            GameEventBus.OnGameStateChanged -= HandleGameStateChanged;
             if (Instance == this) Instance = null;
+        }
+
+        /// <summary>
+        /// Pemetaan GameState ke panel. Sengaja baru menangani InQTE — panel lain
+        /// masih kerangka kosong, jadi memunculkannya belum ada gunanya.
+        /// TODO: Paused -> PausePanel, GameOver -> GameOverPanel,
+        /// DaySummary -> DaySummaryPanel begitu isinya ada.
+        /// </summary>
+        void HandleGameStateChanged(GameState previous, GameState next)
+        {
+            if (next == GameState.InQTE) ShowPanel<QTEPanel>();
+            else if (previous == GameState.InQTE) HidePanel<QTEPanel>();
         }
 
         /// <summary>

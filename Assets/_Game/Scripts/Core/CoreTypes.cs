@@ -28,13 +28,8 @@ namespace MBG.Core
     {
     }
 
-    /// <summary>Nilai satu percobaan QTE. Urutan dari terburuk ke terbaik.</summary>
-    public enum QTEGrade
-    {
-        Miss = 0,
-        Good = 1,
-        Perfect = 2
-    }
+    // QTEGrade sudah pindah ke MBG.QTE (Assets/_Game/Scripts/QTE/QTEGrade.cs)
+    // bersama sisa framework QTE, dan sekarang punya nilai CriticalMiss.
 
     /// <summary>Jenis gangguan yang menginterupsi masakan. TODO: lengkapi.</summary>
     public enum ObstacleType

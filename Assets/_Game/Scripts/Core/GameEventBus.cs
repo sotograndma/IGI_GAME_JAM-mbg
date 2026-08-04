@@ -1,5 +1,6 @@
 using System;
 using MBG.Kitchen;
+using MBG.QTE;
 using UnityEngine;
 
 namespace MBG.Core
@@ -34,6 +35,11 @@ namespace MBG.Core
         public static event Action<StationType> OnStationUsed;
 
         // ---- QTE --------------------------------------------------------
+
+        /// <summary>Satu input QTE dinilai. Dipakai UI untuk umpan balik per hit.</summary>
+        public static event Action<QTEGrade> OnQTEHit;
+
+        /// <summary>Satu sesi QTE selesai — nilai akhirnya (terburuk dari semua hit).</summary>
         public static event Action<QTEGrade> OnQTEResult;
 
         // ---- Obstacle ---------------------------------------------------
@@ -71,6 +77,9 @@ namespace MBG.Core
 
         public static void RaiseStationUsed(StationType type)
             => OnStationUsed?.Invoke(type);
+
+        public static void RaiseQTEHit(QTEGrade grade)
+            => OnQTEHit?.Invoke(grade);
 
         public static void RaiseQTEResult(QTEGrade grade)
             => OnQTEResult?.Invoke(grade);
@@ -115,6 +124,7 @@ namespace MBG.Core
 
             OnStationUsed = null;
 
+            OnQTEHit = null;
             OnQTEResult = null;
 
             OnObstacleStarted = null;

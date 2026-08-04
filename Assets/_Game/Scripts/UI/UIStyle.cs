@@ -1,4 +1,4 @@
-using MBG.Core;
+using MBG.QTE;
 using TMPro;
 using UnityEngine;
 
@@ -42,25 +42,21 @@ namespace MBG.UI
         [Tooltip("Durasi fade default UIPanel, dalam detik unscaled.")]
         public float panelFadeDuration = 0.15f;
 
-        /// <summary>Warna untuk sebuah nilai QTE.</summary>
+        [Tooltip("Berapa lama teks hasil QTE (PERFECT / BAGUS / ...) bertahan sebelum memudar.")]
+        public float qteFeedbackDuration = 0.5f;
+
+        /// <summary>
+        /// Warna untuk sebuah nilai QTE. Teksnya sendiri diambil dari
+        /// <c>QTEGradeExtensions.GetLabel()</c>, bukan dari sini.
+        /// </summary>
         public Color GetQTEColor(QTEGrade grade)
         {
             switch (grade)
             {
                 case QTEGrade.Perfect: return perfectColor;
                 case QTEGrade.Good: return goodColor;
-                default: return missColor;
-            }
-        }
-
-        /// <summary>Label bahasa Indonesia untuk sebuah nilai QTE.</summary>
-        public static string GetQTELabel(QTEGrade grade)
-        {
-            switch (grade)
-            {
-                case QTEGrade.Perfect: return "SEMPURNA";
-                case QTEGrade.Good: return "BAGUS";
-                default: return "MELESET";
+                case QTEGrade.Miss: return missColor;
+                default: return dangerColor;
             }
         }
 
