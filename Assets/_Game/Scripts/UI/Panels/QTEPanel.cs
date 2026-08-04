@@ -49,10 +49,17 @@ namespace MBG.UI
         void Update()
         {
             QTEController controller = QTEController.Instance;
-            if (controller != null && controller.ActiveModule is ITimingBarReadout bar)
+            if (controller != null)
             {
-                UpdateBar(bar);
-                RefreshInstruction();
+                if (controller.ActiveModule is ITimingBarReadout bar)
+                {
+                    UpdateBar(bar);
+                    RefreshInstruction();
+                }
+                else if (controller.ActiveModule is ITugOfWarReadout tug)
+                {
+                    UpdateTugOfWar(tug);
+                }
             }
 
             TickFeedback();
@@ -79,6 +86,25 @@ namespace MBG.UI
             rect.anchorMax = new Vector2(max, 1f);
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
+        }
+
+        /// <summary>
+        /// Mekanik tarik-menarik memakai elemen bar yang sama: zona Good menjadi
+        /// sisi pemain yang terisi, zona Perfect disembunyikan, dan cursor menjadi
+        /// batas tarik-menarik.
+        /// </summary>
+        void UpdateTugOfWar(ITugOfWarReadout tug)
+        {
+            StretchHorizontal(goodZone, 0f, tug.Position01);
+            StretchHorizontal(perfectZone, tug.Position01, tug.Position01);
+            PlaceCursor(cursor, tug.Position01);
+
+            if (instructionLabel == null) return;
+
+            string taunt = string.IsNullOrWhiteSpace(tug.CurrentTaunt) ? "" : $"\"{tug.CurrentTaunt}\"  ";
+            string text = $"{taunt}TEKAN SPASI TERUS!";
+
+            if (instructionLabel.text != text) instructionLabel.text = text;
         }
 
         static void PlaceCursor(RectTransform rect, float position01)

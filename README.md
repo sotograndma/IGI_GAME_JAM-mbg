@@ -31,7 +31,9 @@ Aturan kerja untuk kontributor (manusia maupun AI) ada di [CLAUDE.md](CLAUDE.md)
     ikut terikat. (Urutan tool bebas — menjalankan ulang selalu aman.)
 12. Jalankan menu **Tools > MBG > Build Obstacle Setup**. Tool ini memasang `ObstacleManager`,
     peringatan di `Door_Interior`, dan indikator gangguan di HUD.
-13. Simpan scene (Ctrl+S).
+13. Jalankan menu **Tools > MBG > Build Exterior Encounters**. Tool ini membuat titik encounter di
+    luar rumah dan memasang sisi runtime gangguan Ormas.
+14. Simpan scene (Ctrl+S).
 
 Semua tool di atas aman dijalankan berkali-kali (idempoten), mendukung Undo, dan menolak jalan
 saat Play mode.
@@ -165,7 +167,31 @@ Aturan catering:
 | `IObstacle.cs` | Kontrak gangguan: `Begin`, `Tick`, `Resolve`, `UrgencyNormalized`, `OnResolved` |
 | `ObstacleManager.cs` | Jadwal harian, satu gangguan aktif, pelambatan waktu, perpindahan state |
 | `DoorAlertSystem.cs` | Peringatan di pintu: getaran, ikon, onomatope, guncangan layar |
-| `Modules/TimedObstacleStub.cs` | Stub Ormas / Santet / Pajak Ilegal (urgency naik seiring waktu) |
+| `Modules/TimedObstacleStub.cs` | Stub Santet / Pajak Ilegal (urgency naik seiring waktu) |
+| `Ormas/OrmasObstacle.cs` | Gangguan Ormas lengkap: Intrusion Meter + encounter |
+| `Ormas/OrmasEncounterController.cs` | Memunculkan grup di luar rumah dan penerobos di dapur |
+| `Ormas/OrmasGroup.cs` | Target interaksi "[F] Hadapi mereka" |
+| `ScreenShakeService.cs` | Satu-satunya penulis offset guncangan kamera |
+
+### Ormas
+
+```
+Gedoran mulai  →  Intrusion Meter mengisi (default 22s)
+   ├─ diam di dapur → meter penuh → ormas MASUK
+   │     1 batch hancur, -250 gold, -2 reputasi, layar berguncang keras,
+   │     sprite ormas muncul sebentar di dapur → gangguan selesai (gagal)
+   └─ keluar rumah → meter BERHENTI
+         [F] Hadapi mereka → mini-game tarik-menarik (MashQTE)
+            menang → +1 reputasi, mereka pergi, pemain kembali ke dapur
+            kalah  → -200 gold, -1 reputasi, mereka tetap pergi
+```
+
+- Masuk kembali ke dapur tanpa menghadapi membuat meter **jalan lagi** dari posisi terakhir —
+  keluar sebentar bukan cara murah menghentikan waktu.
+- Selama encounter, `GameClock` dikembalikan ke 1.0 supaya batas waktu 15 detik di config benar-benar
+  15 detik, bukan 30.
+- Kalah tidak pernah membuat pemain terjebak: ormas selalu pergi.
+- Semua angkanya di `OrmasConfigSO`, termasuk daftar kalimat provokasi.
 
 Pintu bukan dekorasi — ia sistem peringatan:
 
@@ -253,6 +279,7 @@ Kemas ke kotak (`QTE_Easy`), 20 porsi per batch.
 | `QTEConfigSO.cs` | Semua angka kesulitan — preset di `Assets/_Game/Data/QTE/` |
 | `QTEController.cs` | Singleton: pilih module, bekukan pemain, atur `GameState`, pancarkan hasil |
 | `Modules/TimingBarQTE.cs` | Skill check ala Dead by Daylight, mendukung multi-hit |
+| `Modules/MashQTE.cs` | Tarik-menarik: tekan Spasi melawan dorongan lawan, dengan kalimat provokasi |
 
 Cara memanggil QTE dari sistem lain:
 

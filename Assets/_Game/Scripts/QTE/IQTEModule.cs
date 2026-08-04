@@ -50,4 +50,21 @@ namespace MBG.QTE
         /// <summary>Total hit dalam sesi ini.</summary>
         int TotalHits { get; }
     }
+
+    /// <summary>
+    /// Data untuk menggambar mekanik tarik-menarik (mash). Sama seperti
+    /// <see cref="ITimingBarReadout"/>, dipisah supaya module lain tidak dipaksa
+    /// mengeksposnya.
+    /// </summary>
+    public interface ITugOfWarReadout
+    {
+        /// <summary>Posisi bar: 0 = pemain kalah total, 1 = pemain menang.</summary>
+        float Position01 { get; }
+
+        /// <summary>Sisa waktu sebagai fraksi batas waktu, 0..1.</summary>
+        float TimeRemaining01 { get; }
+
+        /// <summary>Kalimat provokasi lawan yang sedang tampil.</summary>
+        string CurrentTaunt { get; }
+    }
 }

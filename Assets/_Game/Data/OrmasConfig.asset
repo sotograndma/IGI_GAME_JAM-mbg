@@ -1,0 +1,50 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 72fddac3c0d831b448a221d7c519c91c, type: 3}
+  m_Name: OrmasConfig
+  m_EditorClassIdentifier: Assembly-CSharp::MBG.Data.OrmasConfigSO
+  intrusionDuration: 22
+  difficultyEasyScale: 1.35
+  difficultyHardScale: 0.65
+  batchesDestroyed: 1
+  intrusionGoldPenalty: 250
+  intrusionReputationPenalty: 2
+  intruderVisitDuration: 2.5
+  intrusionShakeAmplitude: 0.28
+  intrusionShakeDuration: 0.9
+  minMemberCount: 3
+  maxMemberCount: 5
+  memberSpacing: 0.9
+  memberWidth: 0.8
+  memberHeight: 1.7
+  memberColor: {r: 0.35, g: 0.32, b: 0.38, a: 1}
+  encounterTriggerSize: {x: 5, y: 3}
+  encounterPrompt: Hadapi mereka
+  pushPerPress: 0.045
+  opponentPushSpeed: 0.16
+  opponentEasyScale: 0.75
+  opponentHardScale: 1.35
+  encounterTimeLimit: 15
+  barStartPosition: 0.5
+  tauntInterval: 2.2
+  winReputationGain: 1
+  loseGoldPenalty: 200
+  loseReputationPenalty: 1
+  taunts:
+  - Ini wilayah kami!
+  - Mana uang keamanannya?
+  - Catering kok enak, mencurigakan!
+  - Sudah izin RT belum, Bu?
+  - Dapur ramai begini, pasti untungnya besar!
+  - Kami cuma minta jatah, bukan maling!
+  - Bau bumbunya sampai pos ronda, itu pelanggaran!
+  - Kami ini pengaman, bukan pengganggu!

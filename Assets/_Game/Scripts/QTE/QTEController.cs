@@ -65,7 +65,8 @@ namespace MBG.QTE
             Instance = this;
 
             RegisterModule(new TimingBarQTE());
-            // TODO: RhythmQTE (santet) dan MashQTE menyusul — cukup daftarkan di sini.
+            RegisterModule(new MashQTE());
+            // TODO: RhythmQTE (santet) menyusul — cukup daftarkan di sini.
         }
 
         void OnDestroy()
@@ -91,6 +92,19 @@ namespace MBG.QTE
             module.OnFinished += HandleFinished;
         }
 
+        /// <summary>
+        /// Ambil module tertentu untuk mengatur parameternya sebelum sesi dimulai —
+        /// dipakai gangguan yang membawa angkanya sendiri.
+        /// </summary>
+        public T GetModule<T>() where T : class, IQTEModule
+        {
+            foreach (IQTEModule module in _modules.Values)
+            {
+                if (module is T typed) return typed;
+            }
+            return null;
+        }
+
         // ---- API ----------------------------------------------------------
 
         /// <summary>
@@ -105,12 +119,9 @@ namespace MBG.QTE
                 return false;
             }
 
-            if (request.config == null)
-            {
-                Debug.LogError("[QTEController] QTERequest tanpa QTEConfigSO — sesi ditolak.", this);
-                return false;
-            }
-
+            // QTEConfigSO boleh kosong: mekanik seperti Mash mengambil angkanya dari
+            // config gangguan masing-masing lewat Configure(). Module yang memang
+            // membutuhkannya (TimingBar) menolak sendiri.
             if (!_modules.TryGetValue(request.type, out IQTEModule module))
             {
                 Debug.LogError($"[QTEController] Belum ada module untuk {request.type}.", this);

@@ -30,10 +30,6 @@ namespace MBG.Obstacles
         [Header("Data")]
         [SerializeField] ObstacleConfigSO config;
 
-        [Header("Kamera")]
-        [Tooltip("Untuk guncangan layar saat gedoran. Boleh kosong.")]
-        [SerializeField] CameraFollow2D cameraFollow;
-
         [Header("Prompt saat ada gangguan")]
         [SerializeField] string obstaclePrompt = "Keluar dan hadapi mereka";
 
@@ -59,7 +55,7 @@ namespace MBG.Obstacles
         {
             // Apa pun yang terjadi, child harus kembali ke tempatnya semula.
             RestoreRestPosition();
-            SetCameraShake(Vector2.zero);
+            ScreenShakeService.SetContinuous(0f);
         }
 
         void CaptureRestPosition()
@@ -128,11 +124,7 @@ namespace MBG.Obstacles
             TickPulse(cfg);
 
             if (State == DoorAlertState.Bang)
-            {
-                float shake = cfg.screenShakeAmplitude * (urgent ? 1.6f : 1f);
-                float st = Time.unscaledTime * cfg.screenShakeSpeed;
-                SetCameraShake(new Vector2(Mathf.Sin(st) * shake, Mathf.Cos(st * 1.3f) * shake * 0.5f));
-            }
+                ScreenShakeService.SetContinuous(cfg.screenShakeAmplitude * (urgent ? 1.6f : 1f));
         }
 
         /// <summary>Bunyi dan kedip onomatope pada interval tetap.</summary>
@@ -169,7 +161,7 @@ namespace MBG.Obstacles
         void ApplyIdle()
         {
             RestoreRestPosition();
-            SetCameraShake(Vector2.zero);
+            ScreenShakeService.SetContinuous(0f);
             SetActiveVisual(false);
         }
 
@@ -183,12 +175,6 @@ namespace MBG.Obstacles
             if (frame != null) frame.enabled = visible;
             if (iconLabel != null) iconLabel.enabled = visible;
             if (onomatopeLabel != null) onomatopeLabel.enabled = visible;
-        }
-
-        void SetCameraShake(Vector2 offset)
-        {
-            if (cameraFollow == null) return;
-            cameraFollow.SetShakeOffset(offset);
         }
 
         // ---- IPromptOverride -------------------------------------------------------

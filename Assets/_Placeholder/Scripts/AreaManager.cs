@@ -47,6 +47,9 @@ public class AreaManager : MonoBehaviour
 
     public static AreaManager Instance { get; private set; }
 
+    /// <summary>Which area the player is currently in.</summary>
+    public Area Current => _current;
+
     Area _current;
     bool _transitioning;
 

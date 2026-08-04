@@ -139,6 +139,34 @@ namespace MBG.Catering
             return ActiveOrder;
         }
 
+        /// <summary>
+        /// Hancurkan sejumlah batch yang sudah jadi — dipakai gangguan yang
+        /// menyabotase dapur. Mengembalikan berapa porsi yang hilang.
+        ///
+        /// Pesanan yang tadinya sudah siap diserahkan otomatis kembali ke tahap
+        /// memasak, karena porsinya jadi kurang lagi.
+        /// </summary>
+        public int DestroyBatches(int batches)
+        {
+            OrderRuntime order = ActiveOrder;
+            if (order == null || !order.IsActive || batches <= 0) return 0;
+
+            int lost = Mathf.Min(order.portionsCompleted, order.PortionsPerBatch * batches);
+            if (lost <= 0) return 0;
+
+            order.portionsCompleted -= lost;
+            order.currentStepIndex = 0;
+            order.currentBatchIndex = Mathf.Max(0, order.currentBatchIndex - batches);
+
+            if (order.state == OrderState.ReadyToDeliver && order.portionsCompleted < order.totalPortions)
+                order.state = OrderState.Cooking;
+
+            Debug.Log($"[Catering] {lost} porsi hancur — sisa {order.portionsCompleted}/{order.totalPortions}.", this);
+            GameEventBus.RaiseOrderProgress(order.portionsCompleted, order.totalPortions);
+
+            return lost;
+        }
+
         /// <summary>Gagalkan pesanan berjalan (deadline habis, atau dipanggil sistem lain).</summary>
         public void FailActiveOrder()
         {

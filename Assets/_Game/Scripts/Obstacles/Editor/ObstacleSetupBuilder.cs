@@ -174,8 +174,6 @@ namespace MBG.Obstacles
             TMP_Text onomatope = EnsureWorldLabel(root, "Onomatope", "TOK TOK TOK", 1.4f, OnomatopeOffsetY, out created);
             changed |= created;
 
-            var cameraFollow = Object.FindAnyObjectByType<CameraFollow2D>(FindObjectsInactive.Include);
-
             var so = new SerializedObject(alert);
             bool bound = false;
             bound |= SetObject(so, "shakeRoot", root);
@@ -183,7 +181,6 @@ namespace MBG.Obstacles
             bound |= SetObject(so, "iconLabel", icon);
             bound |= SetObject(so, "onomatopeLabel", onomatope);
             bound |= SetObject(so, "config", config);
-            if (cameraFollow != null) bound |= SetObject(so, "cameraFollow", cameraFollow);
 
             if (bound)
             {

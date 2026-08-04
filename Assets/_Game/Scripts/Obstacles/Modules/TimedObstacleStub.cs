@@ -73,13 +73,7 @@ namespace MBG.Obstacles
         }
     }
 
-    /// <summary>STUB Ormas: gedoran keras di pintu.</summary>
-    public class OrmasObstacle : TimedObstacleStub
-    {
-        public OrmasObstacle(ObstacleConfigSO config) : base(config) { }
-
-        public override ObstacleType Type => ObstacleType.Ormas;
-    }
+    // Ormas sudah punya implementasi penuh di Ormas/OrmasObstacle.cs.
 
     /// <summary>STUB Santet: serangan gaib.</summary>
     public class SantetObstacle : TimedObstacleStub
