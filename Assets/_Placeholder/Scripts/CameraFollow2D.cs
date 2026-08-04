@@ -20,10 +20,17 @@ public class CameraFollow2D : MonoBehaviour
 
     Camera _cam;
     Vector3 _velocity;
+    Vector2 _shakeOffset;
 
     void Awake() => _cam = GetComponent<Camera>();
 
     public void SetTarget(Transform t) => target = t;
+
+    /// <summary>
+    /// Extra offset applied after clamping, for screen shake. Set it to zero to
+    /// stop shaking — the follow logic itself is untouched by this.
+    /// </summary>
+    public void SetShakeOffset(Vector2 offset) => _shakeOffset = offset;
 
     public void SetBounds(Vector2 min, Vector2 max)
     {
@@ -47,6 +54,8 @@ public class CameraFollow2D : MonoBehaviour
         if (target == null) return;
         Vector3 desired = ClampToBounds(Desired());
         Vector3 pos = Vector3.SmoothDamp(transform.position, desired, ref _velocity, smoothTime);
+        pos.x += _shakeOffset.x;
+        pos.y += _shakeOffset.y;
         pos.z = zPosition;
         transform.position = pos;
     }

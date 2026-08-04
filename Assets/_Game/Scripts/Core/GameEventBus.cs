@@ -1,6 +1,7 @@
 using System;
 using MBG.Catering;
 using MBG.Kitchen;
+using MBG.Obstacles;
 using MBG.QTE;
 using MBG.World;
 using UnityEngine;

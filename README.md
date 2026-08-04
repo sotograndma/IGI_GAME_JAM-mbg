@@ -29,7 +29,9 @@ Aturan kerja untuk kontributor (manusia maupun AI) ada di [CLAUDE.md](CLAUDE.md)
     jeda, ringkasan hari, layar kalah, dan membuat `EventSystem` yang dibutuhkan tombol UI.
 11. Jalankan **Tools > MBG > Build Catering Data** sekali lagi supaya `ResultPanel` dan `DayManager`
     ikut terikat. (Urutan tool bebas — menjalankan ulang selalu aman.)
-12. Simpan scene (Ctrl+S).
+12. Jalankan menu **Tools > MBG > Build Obstacle Setup**. Tool ini memasang `ObstacleManager`,
+    peringatan di `Door_Interior`, dan indikator gangguan di HUD.
+13. Simpan scene (Ctrl+S).
 
 Semua tool di atas aman dijalankan berkali-kali (idempoten), mendukung Undo, dan menolak jalan
 saat Play mode.
@@ -58,7 +60,11 @@ ada sistem yang boleh memanggil `Keyboard.current` langsung.
 | `F2` | Memicu satu `TimingBarQTE` dengan preset `QTE_Normal` dari mana saja, untuk tes cepat |
 | `F3` | Mulai hari kerja langsung, tanpa lewat menu utama |
 | `F4` | Tekan sekali: lompati semua batch → siap diserahkan. Tekan lagi: serahkan pesanan |
-| `F5`–`F12` | Belum dipakai — disediakan untuk sistem berikutnya (obstacle, hari) |
+| `F5` | Picu gangguan **Ormas** (gedoran keras) |
+| `F6` | Picu gangguan **Santet** |
+| `F7` | Picu gangguan **Pajak Ilegal** (ketukan sopan) |
+| `F8` | Selesaikan gangguan yang sedang berjalan (berhasil) |
+| `F9`–`F12` | Belum dipakai |
 
 Untuk menguji prompt **"Belum saatnya"** tanpa sistem pesanan: centang **Debug Force Irrelevant**
 di Inspector station mana pun.
@@ -150,6 +156,36 @@ Aturan catering:
 - Saat `GameState = InObstacle`, semua station jadi tidak relevan sehingga QTE tidak bisa dipicu.
   **Timer deadline tetap berjalan** — obstacle nanti memperlambatnya lewat `GameClock.SetMultiplier`.
 - Timer memakai `GameClock.DeltaTime`.
+
+## Lapisan Obstacle (`Assets/_Game/Scripts/Obstacles/`, namespace `MBG.Obstacles`)
+
+| File | Isi |
+| --- | --- |
+| `ObstacleType.cs` | `enum { Ormas, Santet, IllegalTax }` + `DoorAlertState` + label/ikon/onomatope |
+| `IObstacle.cs` | Kontrak gangguan: `Begin`, `Tick`, `Resolve`, `UrgencyNormalized`, `OnResolved` |
+| `ObstacleManager.cs` | Jadwal harian, satu gangguan aktif, pelambatan waktu, perpindahan state |
+| `DoorAlertSystem.cs` | Peringatan di pintu: getaran, ikon, onomatope, guncangan layar |
+| `Modules/TimedObstacleStub.cs` | Stub Ormas / Santet / Pajak Ilegal (urgency naik seiring waktu) |
+
+Pintu bukan dekorasi — ia sistem peringatan:
+
+| State | Dipakai oleh | Efek |
+| --- | --- | --- |
+| `Idle` | — | Tidak ada apa-apa |
+| `Knock` | Pajak Ilegal | Getar pelan, ikon `?`, SFX `DoorKnock`, teks **"TOK TOK TOK"** |
+| `Bang` | Ormas | Getar keras, ikon `!` merah, SFX `DoorBang`, **"BRAK! BRAK! BRAK!"**, guncangan layar |
+| Urgent | urgency > 0.75 | Getaran mempercepat, warna makin merah, bunyi makin rapat |
+
+Aturan gangguan:
+
+- **Transform `Door_Interior` tidak pernah disentuh.** Semua getaran terjadi pada child
+  `AlertVisual`; posisi awalnya dicatat di `Awake` dan dikembalikan saat peringatan berhenti.
+- Selama gangguan aktif: `GameClock.SetMultiplier(0.5)` (timer pesanan melambat, tidak berhenti),
+  `GameState` menjadi `InObstacle`, sehingga station menolak memicu QTE masak.
+- Hanya satu gangguan aktif; jadwal yang bertabrakan **ditunda**, bukan dibuang.
+- Jadwal dan gangguan di-tick dengan `GameClock.RawDeltaTime` — sistem ini yang memperlambat
+  clock, jadi ia tidak boleh ikut melambat oleh perlambatannya sendiri.
+- Prompt pintu berubah jadi **"Keluar dan hadapi mereka"** berwarna merah selama peringatan aktif.
 
 ## Alur permainan (`Assets/_Game/Scripts/World/`, namespace `MBG.World`)
 

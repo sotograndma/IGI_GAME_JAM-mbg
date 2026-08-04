@@ -29,10 +29,16 @@ public class InteractionPromptUI : MonoBehaviour
         if (Instance == this) Instance = null;
     }
 
-    public void Show(string message)
+    public void Show(string message) => Show(message, Color.white);
+
+    /// <summary>Tinted variant, used when an interactable overrides its prompt.</summary>
+    public void Show(string message, Color tint)
     {
         if (panel != null) panel.SetActive(true);
-        if (label != null) label.text = $"[F] {message}";
+        if (label == null) return;
+
+        label.text = $"[F] {message}";
+        label.color = tint;
     }
 
     public void Hide()

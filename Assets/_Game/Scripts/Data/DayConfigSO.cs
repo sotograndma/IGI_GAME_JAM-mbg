@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using MBG.Core;
+using MBG.Obstacles;
 using UnityEngine;
 
 namespace MBG.Data
@@ -12,7 +12,7 @@ namespace MBG.Data
     [Serializable]
     public class ObstacleScheduleEntry
     {
-        public ObstacleType type = ObstacleType.DoorKnock;
+        public ObstacleType type = ObstacleType.IllegalTax;
 
         [Tooltip("Detik sejak hari dimulai, saat gangguan ini dipicu.")]
         [Min(0f)]

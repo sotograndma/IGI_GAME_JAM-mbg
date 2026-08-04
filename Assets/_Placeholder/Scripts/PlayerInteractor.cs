@@ -39,7 +39,23 @@ public class PlayerInteractor : MonoBehaviour
 
         if (nearest != null)
         {
-            if (InteractionPromptUI.Instance != null) InteractionPromptUI.Instance.Show(nearest.Prompt);
+            if (InteractionPromptUI.Instance != null)
+            {
+                // An interactable may temporarily replace its own prompt — the door
+                // does this while an obstacle is banging on it.
+                string text = nearest.Prompt;
+                Color tint = Color.white;
+
+                if (nearest is MonoBehaviour behaviour
+                    && behaviour.TryGetComponent(out IPromptOverride overrideSource)
+                    && overrideSource.TryGetPromptOverride(out string overrideText, out Color overrideTint))
+                {
+                    text = overrideText;
+                    tint = overrideTint;
+                }
+
+                InteractionPromptUI.Instance.Show(text, tint);
+            }
 
             if (InputService.InteractPressed)
                 nearest.Interact(this);

@@ -1,6 +1,7 @@
 using MBG.Catering;
 using MBG.Core;
 using MBG.Kitchen;
+using MBG.Obstacles;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -49,8 +50,11 @@ namespace MBG.UI
         [SerializeField] float arrowDeadZone = 0.8f;
 
         [Header("Gangguan (kanan bawah)")]
-        [Tooltip("Slot kosong — akan diisi indikator gangguan nanti.")]
         [SerializeField] RectTransform obstacleSlot;
+        [SerializeField] CanvasGroup obstacleGroup;
+        [SerializeField] TMP_Text obstacleIconLabel;
+        [SerializeField] TMP_Text obstacleNameLabel;
+        [SerializeField] RectTransform obstacleUrgencyFill;
 
         [Header("Teks melayang")]
         [SerializeField] RectTransform floatingTextRoot;
@@ -90,6 +94,8 @@ namespace MBG.UI
             ShowOrderCard(false);
             HideFloatingText();
             RefreshCurrency();
+
+            if (obstacleGroup != null) obstacleGroup.alpha = 0f;
         }
 
         protected override void OnDestroy()
@@ -188,7 +194,44 @@ namespace MBG.UI
             UpdateQualityBar(step);
             UpdateTimer();
             UpdateNextStepHint();
+            UpdateObstacleIndicator();
             UpdateFloatingText();
+        }
+
+        /// <summary>
+        /// Indikator gangguan aktif. Urgency dibaca dari ObstacleManager tiap frame —
+        /// mengirimkannya lewat event bus setiap frame hanya akan jadi kebisingan.
+        /// </summary>
+        void UpdateObstacleIndicator()
+        {
+            if (obstacleGroup == null) return;
+
+            IObstacle active = ObstacleManager.Instance != null ? ObstacleManager.Instance.Active : null;
+
+            if (active == null)
+            {
+                obstacleGroup.alpha = 0f;
+                return;
+            }
+
+            obstacleGroup.alpha = 1f;
+
+            if (obstacleIconLabel != null) obstacleIconLabel.text = active.Type.GetIcon();
+            if (obstacleNameLabel != null) obstacleNameLabel.text = active.Type.GetLabel();
+
+            float urgency = active.UrgencyNormalized;
+            SetFill(obstacleUrgencyFill, urgency);
+
+            UIStyle style = UIManager.Style;
+            if (style == null) return;
+
+            // Bar penuh berarti konsekuensi buruk terjadi, jadi warnanya memanas
+            // seiring urgency naik.
+            Color color = Color.Lerp(style.goodColor, style.dangerColor, urgency);
+            SetImageColor(obstacleUrgencyFill, color);
+
+            if (obstacleIconLabel != null) obstacleIconLabel.color = color;
+            if (obstacleNameLabel != null) obstacleNameLabel.color = style.textPrimary;
         }
 
         void UpdateProgressBar(float step)

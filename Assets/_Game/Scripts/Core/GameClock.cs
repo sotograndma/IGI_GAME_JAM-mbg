@@ -51,6 +51,15 @@ namespace MBG.Core
         /// <summary>Delta mentah tanpa multiplier dan tanpa pause (untuk UI/animasi).</summary>
         public static float UnscaledDeltaTime => Time.unscaledDeltaTime;
 
+        /// <summary>
+        /// Delta yang menghormati pause tapi MENGABAIKAN multiplier.
+        ///
+        /// Dipakai sistem yang justru menjadi sebab waktu melambat — gangguan
+        /// memperlambat clock lewat SetMultiplier, jadi kalau ia juga membaca
+        /// DeltaTime, durasinya sendiri ikut molor dua kali lipat.
+        /// </summary>
+        public static float RawDeltaTime => IsPaused ? 0f : Time.deltaTime;
+
         /// <summary>Total waktu gameplay yang sudah berjalan (sudah dikali multiplier, pause tidak dihitung).</summary>
         public static float ElapsedTime => Instance != null ? Instance._elapsed : 0f;
 

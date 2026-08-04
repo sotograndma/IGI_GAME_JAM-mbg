@@ -110,9 +110,12 @@ namespace MBG.UI
             if (next == GameState.InQTE) ShowPanel<QTEPanel>();
             else if (previous == GameState.InQTE) HidePanel<QTEPanel>();
 
-            // HUD hanya untuk state bermain. InObstacle sengaja TIDAK termasuk —
-            // begitu indikator gangguan diisi, state itu mungkin perlu ditambahkan.
-            bool hudVisible = next == GameState.Playing || next == GameState.InQTE;
+            // InObstacle ikut menampilkan HUD: indikator gangguan justru tinggal di
+            // sana, jadi menyembunyikan HUD saat gangguan aktif akan menyembunyikan
+            // satu-satunya penanda urgency.
+            bool hudVisible = next == GameState.Playing
+                              || next == GameState.InQTE
+                              || next == GameState.InObstacle;
             if (hudVisible) ShowPanel<HUDPanel>();
             else HidePanel<HUDPanel>();
 

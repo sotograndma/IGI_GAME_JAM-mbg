@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d6a3f5f6bc075224590b92e2da5d73da, type: 3}
+  m_Name: ObstacleConfig
+  m_EditorClassIdentifier: Assembly-CSharp::MBG.Data.ObstacleConfigSO
+  timeMultiplierDuringObstacle: 0.5
+  ormasDuration: 20
+  santetDuration: 15
+  illegalTaxDuration: 25
+  difficultyEasyScale: 1.3
+  difficultyHardScale: 0.7
+  urgentThreshold: 0.75
+  knockShakeAmplitude: 0.03
+  knockShakeSpeed: 16
+  bangShakeAmplitude: 0.09
+  bangShakeSpeed: 30
+  urgentSpeedMultiplier: 1.8
+  knockInterval: 1.5
+  bangInterval: 0.8
+  screenShakeAmplitude: 0.06
+  screenShakeSpeed: 26
+  knockColor: {r: 0.95, g: 0.82, b: 0.35, a: 1}
+  bangColor: {r: 0.92, g: 0.34, b: 0.28, a: 1}
+  urgentColor: {r: 1, g: 0.15, b: 0.12, a: 1}
