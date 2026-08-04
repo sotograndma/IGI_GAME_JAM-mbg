@@ -94,4 +94,26 @@ namespace MBG.QTE
         int NotesJudged { get; }
         int TotalNotes { get; }
     }
+
+    /// <summary>Data untuk menggambar tantangan mengetik.</summary>
+    public interface ITypingReadout
+    {
+        /// <summary>Kutipan yang harus diketik ulang persis.</summary>
+        string TargetText { get; }
+
+        /// <summary>Yang sudah diketik pemain sejauh ini.</summary>
+        string TypedText { get; }
+
+        /// <summary>Sisa waktu sebagai fraksi batas waktu, 0..1.</summary>
+        float TimeRemaining01 { get; }
+
+        /// <summary>Sisa waktu dalam detik.</summary>
+        float TimeRemaining { get; }
+
+        /// <summary>Akurasi ketikan, 0..1.</summary>
+        float Accuracy01 { get; }
+
+        /// <summary>Kecepatan mengetik dalam kata per menit.</summary>
+        float WordsPerMinute { get; }
+    }
 }

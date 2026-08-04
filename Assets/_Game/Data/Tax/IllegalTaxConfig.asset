@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f641e9d5d52a314fb8f946d516e33c1, type: 3}
+  m_Name: IllegalTaxConfig
+  m_EditorClassIdentifier: Assembly-CSharp::MBG.Data.IllegalTaxConfigSO
+  dialogue: {fileID: 11400000, guid: ed008bf3306cf8f4fb9bb42269319209, type: 2}
+  challenges: {fileID: 11400000, guid: 0440d9bc51c833741a290b2ab3373e31, type: 2}
+  sealDuration: 40
+  difficultyEasyScale: 1.3
+  difficultyHardScale: 0.75
+  sealGoldPenalty: 400
+  sealReputationPenalty: 1
+  typingTimeLimit: 45
+  perfectAccuracy: 0.95
+  goodAccuracy: 0.8
+  winReputationGain: 1
+  partialGoldPenalty: 200
+  fullGoldPenalty: 450
+  failReputationPenalty: 1
+  npcPrompt: Layani petugas
+  npcWidth: 0.85
+  npcHeight: 1.75
+  npcColor: {r: 0.3, g: 0.45, b: 0.62, a: 1}
+  npcTriggerSize: {x: 3.4, y: 3}
+  outsideTimeMultiplier: 0.5

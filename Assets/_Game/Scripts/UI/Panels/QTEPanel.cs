@@ -36,6 +36,11 @@ namespace MBG.UI
         [SerializeField] RectTransform rhythmArea;
         [SerializeField] RectTransform noteTemplate;
 
+        [Header("Mengetik (diisi Tools > MBG > Build Tax Setup)")]
+        [SerializeField] RectTransform typingArea;
+        [SerializeField] TMP_Text typingTextLabel;
+        [SerializeField] TMP_Text typingStatsLabel;
+
         [Tooltip("Seberapa besar ring luar saat baru muncul, relatif ring dalam.")]
         [SerializeField] float noteMaxScale = 3.4f;
 
@@ -66,8 +71,11 @@ namespace MBG.UI
             IQTEModule module = controller != null ? controller.ActiveModule : null;
 
             bool rhythm = module is IRhythmReadout;
-            SetActive(barFrame, !rhythm);
+            bool typing = module is ITypingReadout;
+
+            SetActive(barFrame, !rhythm && !typing);
             SetActive(rhythmArea, rhythm);
+            SetActive(typingArea, typing);
 
             if (module is ITimingBarReadout bar)
             {
@@ -81,6 +89,10 @@ namespace MBG.UI
             else if (module is IRhythmReadout notes)
             {
                 UpdateRhythm(notes);
+            }
+            else if (module is ITypingReadout text)
+            {
+                UpdateTyping(text);
             }
 
             TickFeedback();
@@ -171,6 +183,56 @@ namespace MBG.UI
             string text = $"Tahan santetnya! ({readout.NotesJudged}/{readout.TotalNotes})";
             if (instructionLabel.text != text) instructionLabel.text = text;
         }
+
+        /// <summary>
+        /// Gambar kutipan yang harus diketik: karakter yang benar hijau, yang salah
+        /// merah, sisanya redup, dengan kursor di posisi ketikan berikutnya.
+        /// Warnanya diambil dari UIStyle, bukan ditulis di sini.
+        /// </summary>
+        void UpdateTyping(ITypingReadout readout)
+        {
+            if (typingTextLabel == null) return;
+
+            UIStyle style = UIManager.Style;
+            string ok = ToHex(style != null ? style.successColor : Color.green);
+            string bad = ToHex(style != null ? style.missColor : Color.red);
+            string idle = ToHex(style != null ? style.textMuted : Color.gray);
+            string cursorColor = ToHex(style != null ? style.textPrimary : Color.white);
+
+            string target = readout.TargetText;
+            string typed = readout.TypedText;
+
+            var sb = new System.Text.StringBuilder(target.Length * 24);
+
+            for (int i = 0; i < target.Length; i++)
+            {
+                if (i == typed.Length) sb.Append($"<color=#{cursorColor}>|</color>");
+
+                char c = target[i];
+
+                if (i < typed.Length)
+                    sb.Append($"<color=#{(typed[i] == c ? ok : bad)}>{c}</color>");
+                else
+                    sb.Append($"<color=#{idle}>{c}</color>");
+            }
+
+            if (typed.Length >= target.Length) sb.Append($"<color=#{cursorColor}>|</color>");
+
+            typingTextLabel.text = sb.ToString();
+
+            if (typingStatsLabel == null) return;
+
+            typingStatsLabel.text = $"Sisa {readout.TimeRemaining:0}s     " +
+                                    $"Akurasi {readout.Accuracy01 * 100f:0}%     " +
+                                    $"{readout.WordsPerMinute:0} WPM";
+
+            if (style != null)
+                typingStatsLabel.color = readout.TimeRemaining01 <= style.timerWarningThreshold
+                    ? style.dangerColor
+                    : style.textMuted;
+        }
+
+        static string ToHex(Color color) => ColorUtility.ToHtmlStringRGB(color);
 
         void EnsureNotePool(int count)
         {

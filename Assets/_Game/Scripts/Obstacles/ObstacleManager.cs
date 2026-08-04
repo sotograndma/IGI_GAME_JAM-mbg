@@ -42,6 +42,9 @@ namespace MBG.Obstacles
         [Tooltip("Angka khusus Santet. Diikat oleh Tools > MBG > Build Santet Setup.")]
         [SerializeField] SantetConfigSO santetConfig;
 
+        [Tooltip("Angka khusus Pajak Ilegal. Diikat oleh Tools > MBG > Build Tax Setup.")]
+        [SerializeField] IllegalTaxConfigSO illegalTaxConfig;
+
         [Header("Referensi")]
         [Tooltip("Peringatan di Door_Interior. Diikat oleh Tools > MBG > Build Obstacle Setup.")]
         [SerializeField] DoorAlertSystem doorAlert;
@@ -85,7 +88,7 @@ namespace MBG.Obstacles
 
             RegisterModule(new OrmasObstacle(ormasConfig));
             RegisterModule(new SantetObstacle(santetConfig));
-            RegisterModule(new IllegalTaxObstacle(Config));
+            RegisterModule(new IllegalTaxObstacle(illegalTaxConfig));
         }
 
         void OnEnable()

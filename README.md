@@ -35,7 +35,9 @@ Aturan kerja untuk kontributor (manusia maupun AI) ada di [CLAUDE.md](CLAUDE.md)
     luar rumah dan memasang sisi runtime gangguan Ormas.
 14. Jalankan menu **Tools > MBG > Build Santet Setup**. Tool ini membuat sprite lingkaran &
     vignette, tiga pola ritme, overlay layar, penunjuk objektif, dan area not di panel QTE.
-15. Simpan scene (Ctrl+S).
+15. Jalankan menu **Tools > MBG > Build Tax Setup**. Tool ini membuat naskah dialog, kutipan
+    peraturan fiktif, panel dialog, dan area mengetik.
+16. Simpan scene (Ctrl+S).
 
 Semua tool di atas aman dijalankan berkali-kali (idempoten), mendukung Undo, dan menolak jalan
 saat Play mode.
@@ -169,7 +171,8 @@ Aturan catering:
 | `IObstacle.cs` | Kontrak gangguan: `Begin`, `Tick`, `Resolve`, `UrgencyNormalized`, `OnResolved` |
 | `ObstacleManager.cs` | Jadwal harian, satu gangguan aktif, pelambatan waktu, perpindahan state |
 | `DoorAlertSystem.cs` | Peringatan di pintu: getaran, ikon, onomatope, guncangan layar |
-| `Modules/TimedObstacleStub.cs` | Stub Pajak Ilegal (urgency naik seiring waktu) |
+| `Tax/IllegalTaxObstacle.cs` | Ketukan sabar, dialog petugas, lalu tantangan mengetik |
+| `Tax/TaxPresenter.cs` + `TaxCollectorNPC.cs` | Petugas placeholder dan panel dialognya |
 | `Santet/SantetObstacle.cs` | Serangan ritme di dapur, lalu perburuan dukun di luar |
 | `Santet/SantetPresenter.cs` | Overlay layar, penunjuk objektif, dan dukun placeholder |
 | `Santet/DukunNPC.cs` | Target interaksi "[F] Hentikan santetnya" |
@@ -221,6 +224,33 @@ Fase 2 (luar)   objektif "Cari dukun di luar" + panah penunjuk di tepi layar
   saturasi tidak benar-benar diturunkan, hanya ditumpuk lapisan kelabu.
 - `GameClock` dikembalikan ke 1.0 selama QTE (pola berbasis waktu absolut), dan 0.5 selama
   perburuan dukun.
+
+### Pajak Ilegal
+
+Ketukannya sopan dan sabar — meternya mengisi jauh lebih lambat daripada gedoran ormas.
+
+```
+Ketukan "TOK TOK TOK"  →  meter mengisi (default 40s)
+   ├─ diabaikan → usaha disegel sementara: -400 gold, -1 reputasi
+   └─ keluar rumah → petugas muncul di TaxCollectorPoint
+         [F] Layani petugas → 4 baris tuntutan (Spasi untuk lanjut)
+            [F] Tunjukkan dokumen resmi → TypingChallenge
+               akurasi ≥ 0.95 → PERFECT: pemeras kabur, +1 reputasi
+               akurasi ≥ 0.80 → GOOD   : pemeras pergi, +1 reputasi
+               selesai tapi kacau      : bayar sebagian -200 gold
+               tidak selesai / Escape  : bayar penuh -450 gold, -1 reputasi
+            lalu satu baris dialog penutup
+```
+
+- **Semua nama lembaga, program, dan nomor peraturan FIKTIF.** Contoh: "Peraturan Dinas Pangan
+  Wilayah Nomor 17 Tahun 2024 tentang Penyelenggaraan Program Gizi Rakyat".
+- Enam kutipan tersedia: 2 pendek, 2 sedang, 2 panjang — dipilih sesuai kesulitan hari.
+- Selama mengetik, `InputService.TextInputMode` menyala sehingga gerakan dan tombol aksi mati.
+  Mode itu dimatikan lagi di **setiap** jalur keluar: selesai, kehabisan waktu, Escape,
+  pembatalan dari luar, dan sekali lagi oleh `QTEController` sebagai jaring pengaman.
+- Karakter benar hijau, salah merah, sisanya redup, dengan kursor `|` — warnanya dari `UIStyle`.
+- Backspace memperbaiki teks, tapi tidak menghapus catatan kesalahan: itu yang membedakan
+  cepat-tepat dari cepat-asal.
 
 Pintu bukan dekorasi — ia sistem peringatan:
 
@@ -310,6 +340,7 @@ Kemas ke kotak (`QTE_Easy`), 20 porsi per batch.
 | `Modules/TimingBarQTE.cs` | Skill check ala Dead by Daylight, mendukung multi-hit |
 | `Modules/MashQTE.cs` | Tarik-menarik: tekan Spasi melawan dorongan lawan, dengan kalimat provokasi |
 | `Modules/RhythmQTE.cs` | Ring luar mengecil menuju ring dalam; pola murni berbasis waktu, tanpa sinkronisasi audio |
+| `Modules/TypingChallenge.cs` | Ketik ulang kutipan peraturan persis; menyalakan `TextInputMode` |
 
 Cara memanggil QTE dari sistem lain:
 

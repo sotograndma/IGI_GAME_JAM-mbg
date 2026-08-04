@@ -12,7 +12,10 @@ namespace MBG.QTE
         /// <summary>Tekan tombol mengikuti ketukan. TODO: dipakai untuk santet.</summary>
         Rhythm = 1,
 
-        /// <summary>Tekan tombol secepat mungkin. TODO.</summary>
-        Mash = 2
+        /// <summary>Tekan tombol secepat mungkin — dipakai adu dorong dengan ormas.</summary>
+        Mash = 2,
+
+        /// <summary>Ketik ulang kutipan peraturan persis — dipakai melawan pungli.</summary>
+        Typing = 3
     }
 }

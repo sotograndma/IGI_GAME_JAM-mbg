@@ -67,6 +67,7 @@ namespace MBG.QTE
             RegisterModule(new TimingBarQTE());
             RegisterModule(new MashQTE());
             RegisterModule(new RhythmQTE());
+            RegisterModule(new TypingChallenge());
         }
 
         void OnDestroy()
@@ -188,6 +189,11 @@ namespace MBG.QTE
 
         void RestorePlayerAndState()
         {
+            // Jaring pengaman: hanya TypingChallenge yang menyalakan TextInputMode,
+            // dan pemain yang terkunci di mode teks tidak bisa berjalan sama sekali.
+            // Mematikannya di sini menutup setiap jalur keluar sesi QTE sekaligus.
+            InputService.TextInputMode = false;
+
             FreezePlayer(false);
 
             GameManager manager = GameManager.Instance;

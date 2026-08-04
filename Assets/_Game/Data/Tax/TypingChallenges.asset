@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1e66072d4b1404d4eaeb310899dc24b6, type: 3}
+  m_Name: TypingChallenges
+  m_EditorClassIdentifier: Assembly-CSharp::MBG.Data.TypingChallengeSO
+  shortTexts:
+  - Retribusi wajib menurut Perda Nomor 12 Tahun 2023.
+  - Setiap dapur rakyat dikenai iuran ketertiban.
+  mediumTexts:
+  - Peraturan Dinas Pangan Wilayah Nomor 17 Tahun 2024 tentang Penyelenggaraan Program
+    Gizi Rakyat.
+  - Badan Koordinasi Pangan Kecamatan menetapkan biaya pembinaan bagi setiap penyedia
+    katering bergizi.
+  longTexts:
+  - Berdasarkan Peraturan Dinas Pangan Wilayah Nomor 17 Tahun 2024 tentang Penyelenggaraan
+    Program Gizi Rakyat, setiap penyedia wajib menyetor kontribusi pembinaan sebesar
+    dua persen dari nilai pesanan.
+  - Sesuai Keputusan Badan Koordinasi Pangan Kecamatan Nomor 4 Tahun 2025, penyelenggara
+    dapur rakyat menanggung biaya pengawasan mutu, biaya administrasi berkas, serta
+    iuran ketertiban lingkungan setiap bulan.
