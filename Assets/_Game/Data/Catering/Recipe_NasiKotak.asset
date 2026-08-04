@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca0aab6732e93e2439be966e1d178fbe, type: 3}
+  m_Name: Recipe_NasiKotak
+  m_EditorClassIdentifier: Assembly-CSharp::MBG.Data.RecipeSO
+  displayName: Nasi Kotak
+  steps:
+  - {fileID: 11400000, guid: eaa194b1a15b7564d8b2383017f1f0f8, type: 2}
+  - {fileID: 11400000, guid: 249c5fa9d8f64624e8ded954bafbb02c, type: 2}
+  - {fileID: 11400000, guid: f2b636b304ef3d445ad74342c8f07673, type: 2}
+  portionsPerBatch: 20

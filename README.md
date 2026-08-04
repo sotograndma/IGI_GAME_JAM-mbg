@@ -20,7 +20,9 @@ Aturan kerja untuk kontributor (manusia maupun AI) ada di [CLAUDE.md](CLAUDE.md)
    prefab `Station_Generic`, dan menata empat station di bawah `InteriorRoot/Stations`.
 6. Jalankan menu **Tools > MBG > Build QTE Setup**. Tool ini membuat tiga preset kesulitan,
    memasang `QTEController` di `__Systems`, dan mengisi `QTEPanel` dengan bar, zona, dan indikator.
-7. Simpan scene (Ctrl+S).
+7. Jalankan menu **Tools > MBG > Build Catering Data**. Tool ini membuat resep, pemesan, tiga
+   pesanan contoh, dan memasang `CateringController` di `__Systems`.
+8. Simpan scene (Ctrl+S).
 
 Semua tool di atas aman dijalankan berkali-kali (idempoten), mendukung Undo, dan menolak jalan
 saat Play mode.
@@ -47,10 +49,16 @@ ada sistem yang boleh memanggil `Keyboard.current` langsung.
 | --- | --- |
 | `F1` | Cetak ringkasan state ke Console: `GameState`, `IsGameplayActive`, multiplier & status pause `GameClock`, `TextInputMode`, `MoveAxis`, musik aktif |
 | `F2` | Memicu satu `TimingBarQTE` dengan preset `QTE_Normal` dari mana saja, untuk tes cepat |
-| `F3`–`F12` | Belum dipakai — disediakan untuk sistem berikutnya (order, obstacle) |
+| `F3` | Mulai pesanan contoh pertama (`Order_Sekolah_Kecil`, 40 porsi = 2 batch) |
+| `F4` | Tekan sekali: lompati semua batch → siap diserahkan. Tekan lagi: serahkan pesanan |
+| `F5`–`F12` | Belum dipakai — disediakan untuk sistem berikutnya (obstacle, hari) |
 
 Untuk menguji prompt **"Belum saatnya"** tanpa sistem pesanan: centang **Debug Force Irrelevant**
 di Inspector station mana pun.
+
+> **Penting:** setelah `CateringController` terpasang, station hanya bisa dipakai kalau ada
+> pesanan berjalan **dan** station itu adalah langkah yang sedang ditunggu. Tanpa pesanan, semua
+> station menjawab "Belum saatnya" — tekan `F3` dulu.
 
 Debug key dibaca oleh `GameBootstrap` dan bisa dimatikan lewat checkbox **Enable Debug Keys**
 di Inspector `__Systems`.
@@ -93,6 +101,61 @@ kalau ada station yang keluar ruangan, menabrak zona pintu, atau saling tumpang 
 
 Relevansi station diisi dari luar lewat `KitchenStation.RelevanceCheck` — station tidak boleh
 tahu apa pun tentang sistem pesanan. Selama belum diisi, semua station relevan.
+
+## Lapisan Catering (`Assets/_Game/Scripts/Catering/`, namespace `MBG.Catering`)
+
+| File | Isi |
+| --- | --- |
+| `FoodQuality.cs` | `enum FoodQuality { Perfect, Good, Bad, Failed }` + `enum OrderState` |
+| `OrderRuntime.cs` | State pesanan berjalan: porsi, batch, langkah, timer, riwayat grade, `AverageQuality`, `QualityTier` |
+| `OrderResult.cs` | Hasil akhir pesanan (kualitas, porsi, gold, skor, sisa waktu) |
+| `CateringController.cs` | Mengelola pesanan aktif, memicu QTE per langkah, timer deadline |
+
+Alur satu pesanan:
+
+```
+StartOrder(OrderSO)
+  └─ batch 1..N, tiap batch menjalankan seluruh langkah resep:
+       station benar + tekan F → QTE langkah itu
+         ├─ Perfect / Good / Miss → lanjut langkah berikutnya
+         └─ CriticalMiss          → batch DIULANG dari langkah pertama
+       semua langkah selesai → portionsCompleted += portionsPerBatch
+  └─ semua porsi siap → ReadyToDeliver → station SERAH TERIMA aktif
+       └─ tekan F di Handover → OnOrderCompleted
+  └─ timer habis kapan pun → OnOrderFailed
+```
+
+Aturan catering:
+
+- Station tahu dirinya relevan lewat `KitchenStation.RelevanceCheck`, yang diisi
+  `CateringController`. Station tidak tahu apa pun tentang resep.
+- Interaksi di station yang salah **tidak menghukum** apa pun — prompt hanya jadi "Belum saatnya".
+- `CriticalMiss` mengulang batch dari langkah pertama. Tidak ada gold yang dipotong; yang hilang
+  adalah waktu. (Grade-nya tetap masuk `gradeHistory`, jadi kualitas rata-rata ikut turun.)
+- Saat `GameState = InObstacle`, semua station jadi tidak relevan sehingga QTE tidak bisa dipicu.
+  **Timer deadline tetap berjalan** — obstacle nanti memperlambatnya lewat `GameClock.SetMultiplier`.
+- Timer memakai `GameClock.DeltaTime`.
+
+## Lapisan Data (`Assets/_Game/Scripts/Data/`, namespace `MBG.Data`)
+
+| File | Isi |
+| --- | --- |
+| `RecipeStepSO.cs` | `StationType` + `QTEConfigSO` + `actionLabel` |
+| `RecipeSO.cs` | Nama menu, daftar langkah, `portionsPerBatch` |
+| `RecipientSO.cs` | Institusi pemesan, ikon, `patienceMultiplier` (mengali deadline) |
+| `OrderSO.cs` | Resep + pemesan + porsi + deadline + bayaran dasar |
+| `CateringBalanceSO.cs` | Nilai tiap grade, ambang tingkat kualitas, pengali bayaran |
+
+Asset contoh di `Assets/_Game/Data/Catering/`:
+
+| Pesanan | Porsi | Batch | Deadline | Gold |
+| --- | --- | --- | --- | --- |
+| `Order_Sekolah_Kecil` | 40 | 2 | 180s | 300 |
+| `Order_Sekolah_Sedang` | 100 | 5 | 300s | 800 |
+| `Order_Sekolah_Besar` | 200 | 10 | 480s | 1600 |
+
+`Recipe_NasiKotak` = Potong sayur (`QTE_Easy`) → Masak nasi & lauk (`QTE_Normal`) →
+Kemas ke kotak (`QTE_Easy`), 20 porsi per batch.
 
 ## Lapisan QTE (`Assets/_Game/Scripts/QTE/`, namespace `MBG.QTE`)
 
